@@ -138,10 +138,10 @@ function mapToInternalStatus(wooStatus: string): string {
 function mapTrackingStatus(raw: string): string {
   const s = (raw || "").toLowerCase().trim();
   if (s.includes("deliver")) return "delivered";
-  if (s.includes("transit") || s.includes("shipped") || s.includes("arrived") || s.includes("departed")) return "in-transit";
-  if (s.includes("label") || s.includes("created") || s.includes("pre") || s.includes("new label") || s.includes("not scanned")) return "label-created";
-  if (s.includes("pick") || s.includes("accept")) return "in-transit";
-  return s || "label-created";
+  if (s.includes("transit") || s.includes("shipped") || s.includes("arrived") || s.includes("departed")) return "in_transit";
+  if (s.includes("label") || s.includes("created") || s.includes("pre") || s.includes("new label") || s.includes("not scanned")) return "label_created";
+  if (s.includes("pick") || s.includes("accept")) return "in_transit";
+  return s || "label_created";
 }
 
 function safeDateISO(val: string | undefined | null): string | null {

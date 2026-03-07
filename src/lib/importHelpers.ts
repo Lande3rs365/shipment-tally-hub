@@ -223,7 +223,7 @@ export async function importMasterRows(rows: ParsedMasterRow[], companyId: strin
 
         const shipmentData = {
           carrier: row.carrier, status: row.tracking_status,
-          shipped_date: row.tracking_status !== "label-created" ? row.tracking_date : null,
+          shipped_date: row.tracking_status !== "label_created" ? row.tracking_date : null,
           delivered_date: row.tracking_status === "delivered" ? row.tracking_date : null,
           shipping_cost: row.shipping_cost,
         };
