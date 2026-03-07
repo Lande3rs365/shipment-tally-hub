@@ -82,7 +82,7 @@ export default function ReturnsPage() {
   const [quantity, setQuantity] = useState(1);
   const [condition, setCondition] = useState<ReturnCondition | null>(null);
   const [notes, setNotes] = useState('');
-  const [attachments, setAttachments] = useState<ReturnAttachment[]>([]);
+  
   const [processedReturns, setProcessedReturns] = useState<ReturnEntry[]>([]);
 
   const matchedOrder = mockOrders.find(o => o.orderId.toLowerCase() === orderId.trim().toLowerCase());
