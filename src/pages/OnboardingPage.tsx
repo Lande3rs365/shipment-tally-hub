@@ -84,16 +84,16 @@ export default function OnboardingPage() {
 
       if (linkError) throw linkError;
 
-      // 3. Create enabled stock locations
-      const enabledLocations = locations.filter(l => l.enabled);
-      if (enabledLocations.length > 0) {
+      // 3. Create stock locations
+      const validLocations = locations.filter(l => l.name.trim() && l.code.trim());
+      if (validLocations.length > 0) {
         const { error: locError } = await db
           .from("stock_locations")
-          .insert(enabledLocations.map(l => ({
+          .insert(validLocations.map(l => ({
             company_id: companyId,
-            name: l.name,
-            code: l.code,
-            location_type: l.location_type,
+            name: l.name.trim(),
+            code: l.code.trim(),
+            location_type: "warehouse",
           })));
 
         if (locError) throw locError;
