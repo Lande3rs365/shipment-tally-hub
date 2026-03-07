@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, Building2, MapPin, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
+import { Package, Building2, MapPin, CheckCircle2, ArrowRight, Loader2, Plus, X } from "lucide-react";
 
 const MAX_LOCATIONS = 5;
 
