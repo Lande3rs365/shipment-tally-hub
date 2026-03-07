@@ -257,6 +257,53 @@ export type Database = {
           },
         ]
       }
+      invitations: {
+        Row: {
+          accepted_at: string | null
+          company_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          invite_code: string
+          invited_by: string
+          invitee_email: string
+          role: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          company_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invite_code?: string
+          invited_by: string
+          invitee_email: string
+          role?: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          company_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          invite_code?: string
+          invited_by?: string
+          invitee_email?: string
+          role?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       manufacturer_manifest_items: {
         Row: {
           damaged_qty: number
@@ -1004,6 +1051,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation_by_code: { Args: { _code: string }; Returns: Json }
+      accept_invitation_by_token: { Args: { _token: string }; Returns: Json }
       create_company_with_owner: {
         Args: {
           _company_code: string

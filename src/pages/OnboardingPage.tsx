@@ -199,6 +199,17 @@ export default function OnboardingPage() {
                   Continue <ArrowRight className="w-4 h-4" />
                 </Button>
               </form>
+              <div className="mt-4 pt-4 border-t border-border text-center">
+                <p className="text-xs text-muted-foreground mb-2">Been invited to an existing company?</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/accept-invite")}
+                  className="gap-2"
+                >
+                  Enter Invite Code
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

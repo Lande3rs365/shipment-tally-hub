@@ -22,6 +22,7 @@ import ReturnsPage from "@/pages/ReturnsPage";
 import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import OnboardingPage from "@/pages/OnboardingPage";
+import AcceptInvitePage from "@/pages/AcceptInvitePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <OnboardingPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/accept-invite"
+                element={
+                  <ProtectedRoute>
+                    <AcceptInvitePage />
                   </ProtectedRoute>
                 }
               />

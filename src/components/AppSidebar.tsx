@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import InviteMemberDialog from "@/components/InviteMemberDialog";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -89,6 +90,7 @@ export default function AppSidebar() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          {!collapsed && <InviteMemberDialog />}
         </div>
       )}
 
