@@ -1,11 +1,12 @@
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
-import { kpiData, mockOrders, mockExceptions, mockInventory } from "@/data/mockData";
+import { kpiData, mockOrders, mockExceptions, mockInventory, mockSupplierManifests } from "@/data/mockData";
 import {
   Package, Truck, Warehouse, AlertTriangle, CheckCircle,
-  Clock, XCircle, ArrowUpRight, BarChart3
+  Clock, XCircle, ArrowUpRight, BarChart3, Ship
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { useNavigate } from "react-router-dom";
 
 const chartData = [
   { name: 'Shipped', value: kpiData.ordersShipped, color: 'hsl(142, 71%, 45%)' },
