@@ -53,6 +53,7 @@ export default function OrdersPage() {
                   <th className="text-left py-3 px-4">Date</th>
                   <th className="text-left py-3 px-4">Customer</th>
                   <th className="text-left py-3 px-4">Items</th>
+                  <th className="text-left py-3 px-4">Woo Status</th>
                   <th className="text-left py-3 px-4">Status</th>
                   <th className="text-left py-3 px-4">Source</th>
                 </tr>
@@ -75,6 +76,7 @@ export default function OrdersPage() {
                     <td className="py-3 px-4 text-xs text-muted-foreground">
                       {order.order_items?.map(i => `${i.sku || '?'} ×${i.quantity}`).join(', ') || '—'}
                     </td>
+                    <td className="py-3 px-4"><StatusBadge status={order.woo_status || 'processing'} /></td>
                     <td className="py-3 px-4"><StatusBadge status={order.status} /></td>
                     <td className="py-3 px-4 text-xs text-muted-foreground">{order.source || '—'}</td>
                   </tr>

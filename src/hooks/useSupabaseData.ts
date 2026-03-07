@@ -70,6 +70,23 @@ export function useOrderEvents(orderId: string | undefined) {
   });
 }
 
+// ── Order Shipments ──
+export function useOrderShipments(orderId: string | undefined) {
+  return useQuery<Shipment[]>({
+    queryKey: ["order_shipments", orderId],
+    queryFn: async () => {
+      const { data, error } = await db
+        .from('shipments')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!orderId,
+  });
+}
+
 // ── Inventory ──
 export function useInventory() {
   return useCompanyQuery<InventoryWithRelations[]>("inventory", async (companyId) => {
@@ -218,7 +235,7 @@ export function useDashboardStats() {
     queryFn: async () => {
       const cid = currentCompany!.id;
 
-      const [orders, shipments, products, inventory, exceptions, movements, manifests] = await Promise.all([
+      const [orders, shipments, products, inventory, exceptions, movements, manifests, recentOrders] = await Promise.all([
         db.from('orders').select('id, status', { count: 'exact' }).eq('company_id', cid),
         db.from('shipments').select('id, status', { count: 'exact' }).eq('company_id', cid),
         db.from('products').select('id', { count: 'exact' }).eq('company_id', cid).eq('is_active', true),
@@ -226,6 +243,7 @@ export function useDashboardStats() {
         db.from('exceptions').select('*').eq('company_id', cid).eq('status', 'open'),
         db.from('stock_movements').select('*').eq('company_id', cid).order('timestamp', { ascending: false }).limit(20),
         db.from('manufacturer_manifests').select('*, manufacturer_manifest_items(*)').eq('company_id', cid),
+        db.from('orders').select('id, order_number, customer_name, order_date, status, woo_status').eq('company_id', cid).order('created_at', { ascending: false }).limit(5),
       ]);
 
       const orderList = orders.data || [];
@@ -239,7 +257,6 @@ export function useDashboardStats() {
       const shipped = orderList.filter((o: any) => ['shipped', 'delivered'].includes(o.status)).length;
       const awaiting = orderList.filter((o: any) => ['pending', 'processing'].includes(o.status)).length;
 
-      // Inventory alerts
       const alerts = inventoryList.filter(i => {
         const threshold = i.products?.reorder_point || 0;
         return i.on_hand <= threshold;
@@ -256,6 +273,7 @@ export function useDashboardStats() {
         activeExceptions: exceptionList,
         recentMovements: movementList,
         manifests: manifestList,
+        recentOrders: recentOrders.data || [],
       };
     },
     enabled: !!currentCompany?.id,

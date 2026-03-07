@@ -1,5 +1,4 @@
 // Local type definitions for database tables
-// These mirror the schema until auto-generated types refresh
 
 export interface Company {
   id: string;
@@ -49,8 +48,10 @@ export interface Order {
   order_number: string;
   source: string | null;
   status: string;
+  woo_status: string | null;
   customer_name: string | null;
   customer_email: string | null;
+  customer_phone: string | null;
   shipping_address: string | null;
   total_amount: number | null;
   currency: string;
@@ -101,6 +102,10 @@ export interface ManufacturerManifest {
   status: string;
   expected_date: string | null;
   received_date: string | null;
+  request_date: string | null;
+  shipment_date: string | null;
+  tracking_number: string | null;
+  eta: string | null;
   location_id: string | null;
   notes: string | null;
   created_at: string;
@@ -127,9 +132,13 @@ export interface Return {
   status: string;
   reason: string | null;
   condition: string | null;
+  resolution: string | null;
   stock_outcome: string | null;
   outcome_location_id: string | null;
   refund_amount: number | null;
+  return_qty: number;
+  product_id: string | null;
+  sku: string | null;
   initiated_date: string | null;
   received_date: string | null;
   resolved_date: string | null;

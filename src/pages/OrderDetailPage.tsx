@@ -1,13 +1,14 @@
 import { useParams, Link } from "react-router-dom";
-import { useOrder, useOrderEvents, useStockMovements } from "@/hooks/useSupabaseData";
+import { useOrder, useOrderEvents, useOrderShipments } from "@/hooks/useSupabaseData";
 import StatusBadge from "@/components/StatusBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { ArrowLeft, Package, Clock } from "lucide-react";
+import { ArrowLeft, Package, Clock, Truck, MapPin, Phone, Mail } from "lucide-react";
 
 export default function OrderDetailPage() {
   const { orderId } = useParams();
   const { data: order, isLoading } = useOrder(orderId);
   const { data: events = [] } = useOrderEvents(order?.id);
+  const { data: shipments = [] } = useOrderShipments(order?.id);
 
   if (isLoading) return <div className="p-6"><LoadingSpinner message="Loading order..." /></div>;
 
@@ -34,14 +35,17 @@ export default function OrderDetailPage() {
           <h1 className="text-2xl font-bold flex items-center gap-3">{order.order_number}</h1>
           <p className="text-sm text-muted-foreground">{order.customer_name} · {order.customer_email}</p>
         </div>
-        <StatusBadge status={order.status} />
+        <div className="flex items-center gap-2">
+          <StatusBadge status={order.woo_status || 'processing'} />
+          <StatusBadge status={order.status} />
+        </div>
       </div>
 
-      {/* Details */}
+      {/* Details Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-card border border-border rounded-lg p-4">
-          <p className="text-xs text-muted-foreground uppercase">Status</p>
-          <StatusBadge status={order.status} />
+          <p className="text-xs text-muted-foreground uppercase">Woo Status</p>
+          <StatusBadge status={order.woo_status || 'processing'} />
         </div>
         <div className="bg-card border border-border rounded-lg p-4">
           <p className="text-xs text-muted-foreground uppercase">Source</p>
@@ -58,6 +62,34 @@ export default function OrderDetailPage() {
           <p className="text-foreground font-mono text-xs">
             {order.order_date ? new Date(order.order_date).toLocaleDateString() : '—'}
           </p>
+        </div>
+      </div>
+
+      {/* Customer Info */}
+      <div className="bg-card border border-border rounded-lg p-5">
+        <h2 className="text-sm font-semibold mb-3">Customer Details</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="flex items-start gap-2">
+            <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs text-muted-foreground uppercase">Shipping Address</p>
+              <p className="text-foreground">{order.shipping_address || '—'}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Phone className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs text-muted-foreground uppercase">Phone</p>
+              <p className="text-foreground">{order.customer_phone || '—'}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Mail className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs text-muted-foreground uppercase">Email</p>
+              <p className="text-foreground">{order.customer_email || '—'}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -91,6 +123,46 @@ export default function OrderDetailPage() {
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+
+      {/* Shipments */}
+      <div className="bg-card border border-border rounded-lg p-5">
+        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <Truck className="w-4 h-4 text-primary" />
+          Shipments
+        </h2>
+        {shipments.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No shipments recorded for this order.</p>
+        ) : (
+          <div className="space-y-3">
+            {shipments.map(s => (
+              <div key={s.id} className="bg-muted/30 border border-border/50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-mono text-primary font-medium text-sm">{s.shipment_number || '—'}</span>
+                  <StatusBadge status={s.status} />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">Carrier</span>
+                    <p className="text-foreground">{s.carrier || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Tracking</span>
+                    <p className="font-mono text-foreground">{s.tracking_number || '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Shipped</span>
+                    <p className="text-foreground">{s.shipped_date ? new Date(s.shipped_date).toLocaleDateString() : '—'}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Delivered</span>
+                    <p className="text-foreground">{s.delivered_date ? new Date(s.delivered_date).toLocaleDateString() : '—'}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 

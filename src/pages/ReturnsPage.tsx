@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useOrders, useProducts, useInventory } from "@/hooks/useSupabaseData";
+import { useOrders, useProducts, useStockLocations } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,46 +11,57 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import {
   RotateCcw, PackageCheck, ShieldAlert, Search as SearchIcon,
-  AlertTriangle, ClipboardCheck, CheckCircle2, ArrowRight
+  AlertTriangle, ClipboardCheck, CheckCircle2, ArrowRight, XCircle
 } from "lucide-react";
 
 type ReturnCondition = 'resellable' | 'damaged' | 'defective' | 'inspection-required';
+type ReturnResolution = 'approved' | 'claim-rejected';
 
 const conditionConfig: Record<ReturnCondition, {
   label: string;
   icon: JSX.Element;
-  statusClass: string;
+  borderColor: string;
   description: string;
-  stockOutcome: string;
 }> = {
   resellable: {
     label: 'Resellable',
     icon: <PackageCheck className="w-5 h-5" />,
-    statusClass: 'status-in-stock',
-    description: 'Item in original condition — restock to available inventory',
-    stockOutcome: 'restock',
+    borderColor: 'border-l-[hsl(var(--success))]',
+    description: 'Item in original condition — suitable for restocking',
   },
   damaged: {
     label: 'Damaged',
     icon: <AlertTriangle className="w-5 h-5" />,
-    statusClass: 'status-out-of-stock',
-    description: 'Physical damage — route to quarantine for warehouse review',
-    stockOutcome: 'quarantine',
+    borderColor: 'border-l-[hsl(var(--destructive))]',
+    description: 'Physical damage — may need quarantine or write-off',
   },
   defective: {
     label: 'Defective',
     icon: <ShieldAlert className="w-5 h-5" />,
-    statusClass: 'status-exception',
-    description: 'Product defect — route to warranty / QA inspection',
-    stockOutcome: 'warranty_review',
+    borderColor: 'border-l-[hsl(var(--warning))]',
+    description: 'Product defect — route to warranty / QA review',
   },
   'inspection-required': {
     label: 'Inspection Required',
     icon: <ClipboardCheck className="w-5 h-5" />,
-    statusClass: 'status-low-stock',
+    borderColor: 'border-l-[hsl(var(--info))]',
     description: 'Condition unclear — hold for manual assessment',
-    stockOutcome: 'quarantine',
   },
+};
+
+const stockOutcomeOptions = [
+  { value: 'restock', label: 'Restock', description: 'Return to available inventory' },
+  { value: 'quarantine', label: 'Quarantine', description: 'Hold for inspection' },
+  { value: 'warranty_review', label: 'Warranty Review', description: 'Route to manufacturer/supplier' },
+  { value: 'write_off', label: 'Write Off', description: 'Remove from inventory permanently' },
+  { value: 'return_to_customer', label: 'Return to Customer', description: 'Send back to customer' },
+];
+
+const defaultOutcome: Record<ReturnCondition, string> = {
+  resellable: 'restock',
+  damaged: 'quarantine',
+  defective: 'warranty_review',
+  'inspection-required': 'quarantine',
 };
 
 export default function ReturnsPage() {
@@ -59,6 +70,8 @@ export default function ReturnsPage() {
   const [selectedItemId, setSelectedItemId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [condition, setCondition] = useState<ReturnCondition | null>(null);
+  const [resolution, setResolution] = useState<ReturnResolution>('approved');
+  const [stockOutcome, setStockOutcome] = useState('');
   const [notes, setNotes] = useState('');
 
   const { currentCompany } = useCompany();
@@ -66,12 +79,29 @@ export default function ReturnsPage() {
   const queryClient = useQueryClient();
   const { data: orders = [] } = useOrders();
   const { data: products = [] } = useProducts();
+  const { data: locations = [] } = useStockLocations();
 
   const matchedOrder = orders.find(o => o.order_number.toLowerCase() === orderNumber.trim().toLowerCase());
   const matchedItem = matchedOrder?.order_items?.find(i => i.id === selectedItemId);
   const matchedProduct = matchedItem?.product_id ? products.find(p => p.id === matchedItem.product_id) : null;
 
-  const canProceed = matchedOrder && selectedItemId && condition && quantity > 0;
+  // Auto-set stock outcome when condition changes
+  const handleConditionChange = (c: ReturnCondition) => {
+    setCondition(c);
+    setStockOutcome(defaultOutcome[c]);
+  };
+
+  // When resolution is claim-rejected, force outcome
+  const handleResolutionChange = (r: ReturnResolution) => {
+    setResolution(r);
+    if (r === 'claim-rejected') {
+      setStockOutcome('return_to_customer');
+    } else if (condition) {
+      setStockOutcome(defaultOutcome[condition]);
+    }
+  };
+
+  const canProceed = matchedOrder && selectedItemId && condition && resolution && stockOutcome && quantity > 0;
 
   function handleSubmit() {
     if (!canProceed) return;
@@ -80,22 +110,78 @@ export default function ReturnsPage() {
 
   async function handleConfirm() {
     if (!condition || !matchedOrder || !matchedItem || !currentCompany) return;
-    const cfg = conditionConfig[condition];
 
-    await (supabase as any).from('returns').insert({
+    const primaryLocation = locations[0];
+
+    // 1. Insert return record
+    const { data: returnRecord } = await (supabase as any).from('returns').insert({
       company_id: currentCompany.id,
       order_id: matchedOrder.id,
       return_number: `RET-${Date.now()}`,
       status: 'received',
       reason: notes || null,
-      condition: condition,
-      stock_outcome: cfg.stockOutcome,
+      condition,
+      resolution,
+      stock_outcome: stockOutcome,
+      return_qty: quantity,
+      product_id: matchedItem.product_id || null,
+      sku: matchedItem.sku || null,
       notes: notes || null,
       initiated_date: new Date().toISOString(),
       received_date: new Date().toISOString(),
-    });
+    }).select('id').single();
+
+    // 2. Create stock movement (source of truth)
+    if (matchedItem.product_id && stockOutcome !== 'return_to_customer') {
+      const direction = stockOutcome === 'write_off' ? 'OUT' : 'IN';
+      const movementType = stockOutcome === 'restock' ? 'return_restock'
+        : stockOutcome === 'quarantine' ? 'return_quarantine'
+        : stockOutcome === 'warranty_review' ? 'return_warranty'
+        : 'return_write_off';
+
+      await (supabase as any).from('stock_movements').insert({
+        company_id: currentCompany.id,
+        product_id: matchedItem.product_id,
+        sku: matchedItem.sku || null,
+        direction,
+        movement_type: movementType,
+        quantity,
+        to_location_id: primaryLocation?.id || null,
+        linked_order_id: matchedOrder.id,
+        linked_return_id: returnRecord?.id || null,
+        reason_code: `Return — ${condition}`,
+        notes: `Resolution: ${resolution}, Outcome: ${stockOutcome}`,
+        performed_by: user?.id || null,
+      });
+
+      // 3. Update inventory (derived from movement)
+      if (primaryLocation) {
+        const { data: existing } = await (supabase as any)
+          .from('inventory')
+          .select('id, on_hand, available, damaged')
+          .eq('product_id', matchedItem.product_id)
+          .eq('location_id', primaryLocation.id)
+          .maybeSingle();
+
+        if (existing) {
+          const updates: Record<string, number> = {};
+          if (stockOutcome === 'restock') {
+            updates.on_hand = existing.on_hand + quantity;
+            updates.available = existing.available + quantity;
+          } else if (stockOutcome === 'quarantine' || stockOutcome === 'warranty_review') {
+            updates.on_hand = existing.on_hand + quantity;
+            updates.damaged = existing.damaged + quantity;
+          }
+          if (Object.keys(updates).length > 0) {
+            await (supabase as any).from('inventory').update(updates).eq('id', existing.id);
+          }
+        }
+      }
+    }
 
     queryClient.invalidateQueries({ queryKey: ['returns'] });
+    queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+    queryClient.invalidateQueries({ queryKey: ['inventory'] });
     setStep('done');
   }
 
@@ -105,6 +191,8 @@ export default function ReturnsPage() {
     setSelectedItemId('');
     setQuantity(1);
     setCondition(null);
+    setResolution('approved');
+    setStockOutcome('');
     setNotes('');
   }
 
@@ -131,12 +219,13 @@ export default function ReturnsPage() {
             <CardContent>
               {step === 'form' && (
                 <div className="space-y-5">
+                  {/* Order Number */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Order Number</label>
                     <div className="relative">
                       <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <input
-                        type="text" placeholder="e.g. WOO-10421"
+                        type="text" placeholder="e.g. WC-10421"
                         value={orderNumber}
                         onChange={e => { setOrderNumber(e.target.value); setSelectedItemId(''); }}
                         className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -152,6 +241,7 @@ export default function ReturnsPage() {
                     )}
                   </div>
 
+                  {/* Select Item */}
                   {matchedOrder && matchedOrder.order_items && (
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Item</label>
@@ -159,7 +249,7 @@ export default function ReturnsPage() {
                         {matchedOrder.order_items.map(item => (
                           <button
                             key={item.id}
-                            onClick={() => setSelectedItemId(item.id)}
+                            onClick={() => { setSelectedItemId(item.id); setQuantity(1); }}
                             className={`w-full flex items-center justify-between px-4 py-3 rounded-md border text-sm transition-colors ${
                               selectedItemId === item.id
                                 ? 'border-primary bg-primary/10 text-foreground'
@@ -167,13 +257,14 @@ export default function ReturnsPage() {
                             }`}
                           >
                             <span className="font-mono text-xs">{item.sku || '—'}</span>
-                            <span>Qty: {item.quantity}</span>
+                            <span>Qty ordered: {item.quantity}</span>
                           </button>
                         ))}
                       </div>
                     </div>
                   )}
 
+                  {/* Return Quantity */}
                   {selectedItemId && (
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Return Quantity</label>
@@ -182,19 +273,23 @@ export default function ReturnsPage() {
                         value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)}
                         className="w-24 bg-card border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                       />
+                      {matchedItem && matchedItem.quantity > 1 && (
+                        <p className="text-xs text-muted-foreground">Returning {quantity} of {matchedItem.quantity}</p>
+                      )}
                     </div>
                   )}
 
+                  {/* Condition */}
                   {selectedItemId && (
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Return Condition</label>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Condition</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {(Object.entries(conditionConfig) as [ReturnCondition, typeof conditionConfig[ReturnCondition]][]).map(
                           ([key, cfg]) => (
                             <button
                               key={key}
-                              onClick={() => setCondition(key)}
-                              className={`flex items-start gap-3 p-4 rounded-lg border text-left transition-all ${
+                              onClick={() => handleConditionChange(key)}
+                              className={`flex items-start gap-3 p-4 rounded-lg border-l-4 border text-left transition-all ${cfg.borderColor} ${
                                 condition === key
                                   ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
                                   : 'border-border bg-card hover:border-muted-foreground'
@@ -214,6 +309,61 @@ export default function ReturnsPage() {
                     </div>
                   )}
 
+                  {/* Resolution */}
+                  {condition && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Resolution</label>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => handleResolutionChange('approved')}
+                          className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-sm transition-all ${
+                            resolution === 'approved'
+                              ? 'border-[hsl(var(--success))] bg-[hsl(var(--success)/0.1)] text-foreground ring-1 ring-[hsl(var(--success)/0.3)]'
+                              : 'border-border bg-card text-muted-foreground hover:border-muted-foreground'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                          Approved
+                        </button>
+                        <button
+                          onClick={() => handleResolutionChange('claim-rejected')}
+                          className={`flex items-center gap-2 px-4 py-3 rounded-lg border text-sm transition-all ${
+                            resolution === 'claim-rejected'
+                              ? 'border-[hsl(var(--destructive))] bg-[hsl(var(--destructive)/0.1)] text-foreground ring-1 ring-[hsl(var(--destructive)/0.3)]'
+                              : 'border-border bg-card text-muted-foreground hover:border-muted-foreground'
+                          }`}
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Claim Rejected
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stock Outcome */}
+                  {condition && resolution && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Stock Outcome</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {stockOutcomeOptions.map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => setStockOutcome(opt.value)}
+                            className={`px-3 py-2.5 rounded-md border text-left text-sm transition-all ${
+                              stockOutcome === opt.value
+                                ? 'border-primary bg-primary/10 text-foreground'
+                                : 'border-border bg-card text-muted-foreground hover:border-muted-foreground'
+                            }`}
+                          >
+                            <p className="font-medium text-xs">{opt.label}</p>
+                            <p className="text-[10px] text-muted-foreground">{opt.description}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes */}
                   {condition && (
                     <div className="space-y-1.5">
                       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes (optional)</label>
@@ -251,15 +401,20 @@ export default function ReturnsPage() {
                       </div>
                       <div>
                         <span className="text-muted-foreground">Quantity</span>
-                        <p className="text-foreground">{quantity}</p>
+                        <p className="text-foreground">{quantity} of {matchedItem.quantity}</p>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Condition</span>
-                        <p><span className={`status-badge ${conditionConfig[condition].statusClass}`}>{conditionConfig[condition].label}</span></p>
+                        <p><StatusBadge status={condition} /></p>
                       </div>
                       <div>
+                        <span className="text-muted-foreground">Resolution</span>
+                        <p><StatusBadge status={resolution === 'approved' ? 'completed' : 'exception'} /></p>
+                        <p className="text-xs text-foreground capitalize">{resolution.replace('-', ' ')}</p>
+                      </div>
+                      <div className="col-span-2">
                         <span className="text-muted-foreground">Stock Outcome</span>
-                        <p className="text-foreground capitalize">{conditionConfig[condition].stockOutcome.replace(/_/g, ' ')}</p>
+                        <p className="text-foreground capitalize">{stockOutcome.replace(/_/g, ' ')}</p>
                       </div>
                     </div>
                   </div>
@@ -274,13 +429,13 @@ export default function ReturnsPage() {
 
               {step === 'done' && (
                 <div className="text-center py-8 space-y-4">
-                  <div className="w-14 h-14 rounded-full bg-success/15 flex items-center justify-center mx-auto">
+                  <div className="w-14 h-14 rounded-full bg-[hsl(var(--success)/0.15)] flex items-center justify-center mx-auto">
                     <CheckCircle2 className="w-7 h-7 text-success" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">Return Processed</h3>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Return recorded. Stock movement will be generated based on the outcome.
+                      Return recorded and stock movement created. Inventory has been updated.
                     </p>
                   </div>
                   <Button onClick={handleReset} variant="outline">

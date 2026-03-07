@@ -17,7 +17,6 @@ import UploadsPage from "@/pages/UploadsPage";
 import ExceptionsPage from "@/pages/ExceptionsPage";
 import ExportsPage from "@/pages/ExportsPage";
 import StockMovementsPage from "@/pages/StockMovementsPage";
-import AdjustmentsPage from "@/pages/AdjustmentsPage";
 import SupplierManifestsPage from "@/pages/SupplierManifestsPage";
 import ReturnsPage from "@/pages/ReturnsPage";
 import LoginPage from "@/pages/LoginPage";
@@ -60,7 +59,6 @@ const App = () => (
                           <Route path="/shipments" element={<ShipmentsPage />} />
                           <Route path="/uploads" element={<UploadsPage />} />
                           <Route path="/stock-movements" element={<StockMovementsPage />} />
-                          <Route path="/adjustments" element={<AdjustmentsPage />} />
                           <Route path="/supplier-manifests" element={<SupplierManifestsPage />} />
                           <Route path="/returns" element={<ReturnsPage />} />
                           <Route path="/exceptions" element={<ExceptionsPage />} />

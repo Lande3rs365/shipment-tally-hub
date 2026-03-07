@@ -6,7 +6,7 @@ import { useDashboardStats } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
 import {
   Package, Truck, Warehouse, AlertTriangle,
-  BarChart3, Ship, RotateCcw, Clock
+  BarChart3, Ship, RotateCcw, Clock, ArrowRight
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useNavigate } from "react-router-dom";
@@ -31,9 +31,9 @@ export default function Dashboard() {
   }
 
   const chartData = [
-    { name: 'Shipped', value: stats?.ordersShipped || 0, color: 'hsl(142, 71%, 45%)' },
-    { name: 'Awaiting', value: stats?.awaitingShipment || 0, color: 'hsl(199, 89%, 48%)' },
-    { name: 'Exceptions', value: stats?.exceptions || 0, color: 'hsl(0, 72%, 51%)' },
+    { name: 'Shipped', value: stats?.ordersShipped || 0, color: 'hsl(var(--success))' },
+    { name: 'Awaiting', value: stats?.awaitingShipment || 0, color: 'hsl(var(--info))' },
+    { name: 'Exceptions', value: stats?.exceptions || 0, color: 'hsl(var(--destructive))' },
   ];
 
   return (
@@ -72,9 +72,17 @@ export default function Dashboard() {
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={chartData} barCategoryGap="30%">
-                <XAxis dataKey="name" tick={{ fill: 'hsl(215, 20%, 55%)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'hsl(215, 20%, 55%)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: 'hsl(222, 44%, 9%)', border: '1px solid hsl(215, 25%, 18%)', borderRadius: 8, color: 'hsl(210, 40%, 92%)' }} />
+                <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    background: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: 8,
+                    color: 'hsl(var(--foreground))',
+                  }}
+                  cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
+                />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                   {chartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                 </Bar>
@@ -94,36 +102,101 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-3">
               {stats!.inventoryAlerts.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between text-sm">
+                <button
+                  key={item.id}
+                  onClick={() => navigate(`/inventory?sku=${encodeURIComponent(item.products?.sku || '')}`)}
+                  className="w-full flex items-center justify-between text-sm hover:bg-muted/30 rounded-md px-2 py-1.5 -mx-2 transition-colors text-left"
+                >
                   <div>
                     <p className="font-medium text-foreground">{item.products?.name || '—'}</p>
                     <p className="text-xs text-muted-foreground font-mono">{item.products?.sku || '—'}</p>
                   </div>
                   <span className="font-mono text-xs text-destructive">{item.on_hand} on hand</span>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
       </div>
 
+      {/* Recent Orders */}
+      <div className="bg-card border border-border rounded-lg p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Package className="w-4 h-4 text-primary" />
+            Recent Orders
+          </h2>
+          <button onClick={() => navigate('/orders')} className="text-xs text-primary hover:underline flex items-center gap-1">
+            View all <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+        {(stats?.recentOrders || []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">No orders yet</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
+                  <th className="text-left py-2 px-3">Order</th>
+                  <th className="text-left py-2 px-3">Customer</th>
+                  <th className="text-left py-2 px-3">Date</th>
+                  <th className="text-left py-2 px-3">Woo Status</th>
+                  <th className="text-left py-2 px-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats!.recentOrders.map((o: any) => (
+                  <tr
+                    key={o.id}
+                    onClick={() => navigate(`/orders/${o.order_number}`)}
+                    className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors"
+                  >
+                    <td className="py-2 px-3 font-mono text-primary font-medium">{o.order_number}</td>
+                    <td className="py-2 px-3 text-foreground">{o.customer_name || '—'}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-muted-foreground">
+                      {o.order_date ? new Date(o.order_date).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="py-2 px-3"><StatusBadge status={o.woo_status || 'processing'} /></td>
+                    <td className="py-2 px-3"><StatusBadge status={o.status} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Manufacturer Inbound */}
       <div className="bg-card border border-border rounded-lg p-5">
-        <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
-          <Ship className="w-4 h-4 text-info" />
-          Manufacturer Inbound
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Ship className="w-4 h-4 text-info" />
+            Manufacturer Inbound
+          </h2>
+          <button onClick={() => navigate('/supplier-manifests')} className="text-xs text-primary hover:underline flex items-center gap-1">
+            View all <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
         {(stats?.manifests || []).length === 0 ? (
           <p className="text-xs text-muted-foreground">No inbound manifests</p>
         ) : (
           <div className="space-y-2">
             {stats!.manifests.map((m: any) => (
-              <div key={m.id} className="flex items-center justify-between p-3 rounded-md bg-muted/30 border border-border/50">
+              <div
+                key={m.id}
+                onClick={() => navigate('/supplier-manifests')}
+                className="flex items-center justify-between p-3 rounded-md bg-muted/30 border border-border/50 cursor-pointer hover:bg-muted/50 transition-colors"
+              >
                 <div>
                   <p className="text-sm font-medium text-foreground">{m.manufacturer_name}</p>
                   <p className="text-xs text-muted-foreground font-mono">{m.manifest_number || '—'}</p>
                 </div>
-                <StatusBadge status={m.status} />
+                <div className="flex items-center gap-3">
+                  {m.tracking_number && (
+                    <span className="text-xs font-mono text-muted-foreground">{m.tracking_number}</span>
+                  )}
+                  <StatusBadge status={m.status} />
+                </div>
               </div>
             ))}
           </div>
@@ -132,21 +205,30 @@ export default function Dashboard() {
 
       {/* Exceptions */}
       <div className="bg-card border border-border rounded-lg p-5">
-        <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-destructive" />
-          Active Exceptions
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            Active Exceptions
+          </h2>
+          <button onClick={() => navigate('/exceptions')} className="text-xs text-primary hover:underline flex items-center gap-1">
+            View all <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
         {(stats?.activeExceptions || []).length === 0 ? (
           <p className="text-xs text-muted-foreground">No active exceptions</p>
         ) : (
           <div className="space-y-2">
             {stats!.activeExceptions.map((exc: any) => (
-              <div key={exc.id} className="flex items-center justify-between p-3 rounded-md bg-muted/50 border border-border">
+              <div
+                key={exc.id}
+                onClick={() => navigate('/exceptions')}
+                className="flex items-center justify-between p-3 rounded-md bg-muted/50 border border-border cursor-pointer hover:bg-muted/70 transition-colors"
+              >
                 <div className="flex items-center gap-3">
                   <StatusBadge status={exc.severity} />
                   <div>
                     <p className="text-sm font-medium text-foreground">{exc.title}</p>
-                    <p className="text-xs text-muted-foreground">{exc.exception_type}</p>
+                    <p className="text-xs text-muted-foreground">{exc.exception_type.replace(/_/g, ' ')}</p>
                   </div>
                 </div>
                 <span className="text-xs text-muted-foreground font-mono">

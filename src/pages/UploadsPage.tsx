@@ -9,7 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-const sources = ['WooCommerce', 'Pirate Ship', 'ShipStation', 'Inventory / Stock'];
+const sources = ['WooCommerce', 'Pirate Ship', 'ShipStation', 'Inventory / Stock', 'Manufacturer Inbound'];
 
 export default function UploadsPage() {
   const [selectedSource, setSelectedSource] = useState(sources[0]);
@@ -55,11 +55,11 @@ export default function UploadsPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Data Intake</h1>
-        <p className="text-sm text-muted-foreground">Upload order, shipment, and inventory files</p>
+        <p className="text-sm text-muted-foreground">Upload order, shipment, inventory, and manufacturer inbound files</p>
       </div>
 
       {/* Source selector */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {sources.map(s => (
           <button
             key={s}
