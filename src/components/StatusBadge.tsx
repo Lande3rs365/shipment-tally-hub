@@ -34,7 +34,6 @@ const statusMap: Record<string, string> = {
   'defective': 'status-exception',
   'in-quarantine': 'status-low-stock',
   'expected': 'status-processing',
-  'in-transit': 'status-processing',
   'received': 'status-shipped',
   'partial-receipt': 'status-low-stock',
   'short-receipt': 'status-out-of-stock',
