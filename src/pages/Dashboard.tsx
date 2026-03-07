@@ -16,6 +16,7 @@ const chartData = [
 ];
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
