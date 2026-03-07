@@ -94,7 +94,7 @@ export default function OnboardingPage() {
       }
 
       // 4. Set as current company in context
-      setCurrentCompany(company);
+      setCurrentCompany({ id: companyId, name: companyName.trim(), code: companyCode.trim().toUpperCase(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
       setStep("done");
 
       // 5. Redirect after a moment
