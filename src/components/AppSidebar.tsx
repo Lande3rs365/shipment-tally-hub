@@ -15,6 +15,7 @@ const navItems = [
   { to: "/adjustments", icon: SlidersHorizontal, label: "Adjustments" },
   { to: "/shipments", icon: Truck, label: "Shipments" },
   { to: "/supplier-manifests", icon: Ship, label: "Supplier Inbound" },
+  { to: "/returns", icon: RotateCcw, label: "Returns" },
   { to: "/uploads", icon: Upload, label: "Data Intake" },
   { to: "/exceptions", icon: AlertTriangle, label: "Exceptions" },
   { to: "/exports", icon: FileText, label: "Exports" },
