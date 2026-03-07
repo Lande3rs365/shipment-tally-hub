@@ -126,7 +126,7 @@ export default function ReturnsPage() {
     setQuantity(1);
     setCondition(null);
     setNotes('');
-    setAttachments([]);
+    
   }
 
   return (
