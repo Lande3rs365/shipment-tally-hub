@@ -11,6 +11,8 @@ const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/orders", icon: Package, label: "Orders" },
   { to: "/inventory", icon: Warehouse, label: "Inventory" },
+  { to: "/stock-movements", icon: ArrowRightLeft, label: "Stock Ledger" },
+  { to: "/adjustments", icon: SlidersHorizontal, label: "Adjustments" },
   { to: "/shipments", icon: Truck, label: "Shipments" },
   { to: "/uploads", icon: Upload, label: "Data Intake" },
   { to: "/exceptions", icon: AlertTriangle, label: "Exceptions" },
