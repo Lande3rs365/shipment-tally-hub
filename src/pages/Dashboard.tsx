@@ -133,6 +133,7 @@ export default function Dashboard() {
               <tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
                 <th className="text-left py-2 px-3">Order</th>
                 <th className="text-left py-2 px-3">Customer</th>
+                <th className="text-left py-2 px-3">Source / Cost Centre</th>
                 <th className="text-left py-2 px-3">Woo Status</th>
                 <th className="text-left py-2 px-3">Shipment</th>
                 <th className="text-left py-2 px-3">Inventory</th>
@@ -144,6 +145,9 @@ export default function Dashboard() {
                 <tr key={order.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                   <td className="py-2.5 px-3 font-mono text-primary">{order.orderId}</td>
                   <td className="py-2.5 px-3 text-foreground">{order.customerName}</td>
+                  <td className="py-2.5 px-3">
+                    <span className="font-mono text-xs bg-muted/50 text-muted-foreground px-2 py-0.5 rounded">{order.companyId}</span>
+                  </td>
                   <td className="py-2.5 px-3"><StatusBadge status={order.wooStatus} /></td>
                   <td className="py-2.5 px-3"><StatusBadge status={order.shipmentStatus} /></td>
                   <td className="py-2.5 px-3"><StatusBadge status={order.inventoryStatus} /></td>

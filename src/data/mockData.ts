@@ -100,7 +100,8 @@ export interface ExceptionRecord {
 export const mockOrders: MasterOrder[] = [
   {
     id: '1', orderId: 'WOO-10421', orderDate: '2026-03-01', customerName: 'Sarah Mitchell',
-    customerEmail: 'sarah.m@email.com', items: [{ sku: 'VIT-C-500', name: 'Vitamin C 500mg', quantity: 2 }],
+    customerEmail: 'sarah.m@email.com', companyId: 'CC-NutriWell',
+    items: [{ sku: 'VIT-C-500', name: 'Vitamin C 500mg', quantity: 2 }],
     wooStatus: 'processing', shipmentCarrier: 'USPS', trackingNumber: '9400111899223456789012',
     shipmentDate: '2026-03-02', shipmentStatus: 'in-transit', inventoryStatus: 'allocated',
     operationalStatus: 'shipped', supportStatus: 'Shipment in transit via USPS',
@@ -108,7 +109,8 @@ export const mockOrders: MasterOrder[] = [
   },
   {
     id: '2', orderId: 'WOO-10422', orderDate: '2026-03-01', customerName: 'James Porter',
-    customerEmail: 'jporter@email.com', items: [{ sku: 'OMEGA-3-120', name: 'Omega 3 Fish Oil 120ct', quantity: 1 }, { sku: 'ZNC-50', name: 'Zinc 50mg', quantity: 3 }],
+    customerEmail: 'jporter@email.com', companyId: 'CC-VitaCore',
+    items: [{ sku: 'OMEGA-3-120', name: 'Omega 3 Fish Oil 120ct', quantity: 1 }, { sku: 'ZNC-50', name: 'Zinc 50mg', quantity: 3 }],
     wooStatus: 'processing', shipmentCarrier: null, trackingNumber: null,
     shipmentDate: null, shipmentStatus: 'not-shipped', inventoryStatus: 'out-of-stock',
     operationalStatus: 'awaiting-stock', supportStatus: 'Delayed — awaiting stock allocation',
@@ -116,7 +118,8 @@ export const mockOrders: MasterOrder[] = [
   },
   {
     id: '3', orderId: 'WOO-10423', orderDate: '2026-03-02', customerName: 'Linda Chen',
-    customerEmail: 'lchen@email.com', items: [{ sku: 'MAG-400', name: 'Magnesium 400mg', quantity: 1 }],
+    customerEmail: 'lchen@email.com', companyId: 'CC-NutriWell',
+    items: [{ sku: 'MAG-400', name: 'Magnesium 400mg', quantity: 1 }],
     wooStatus: 'completed', shipmentCarrier: 'UPS', trackingNumber: '1Z999AA10123456784',
     shipmentDate: '2026-03-03', shipmentStatus: 'delivered', inventoryStatus: 'allocated',
     operationalStatus: 'delivered', supportStatus: 'Delivered',
@@ -124,7 +127,8 @@ export const mockOrders: MasterOrder[] = [
   },
   {
     id: '4', orderId: 'WOO-10424', orderDate: '2026-03-02', customerName: 'Marcus Brown',
-    customerEmail: 'mbrown@email.com', items: [{ sku: 'VIT-D-1000', name: 'Vitamin D3 1000IU', quantity: 2 }],
+    customerEmail: 'mbrown@email.com', companyId: 'CC-HealthPlus',
+    items: [{ sku: 'VIT-D-1000', name: 'Vitamin D3 1000IU', quantity: 2 }],
     wooStatus: 'completed', shipmentCarrier: null, trackingNumber: null,
     shipmentDate: null, shipmentStatus: 'not-shipped', inventoryStatus: 'in-stock',
     operationalStatus: 'exception', supportStatus: 'Under review — marked complete but not shipped',
@@ -132,7 +136,8 @@ export const mockOrders: MasterOrder[] = [
   },
   {
     id: '5', orderId: 'WOO-10425', orderDate: '2026-03-03', customerName: 'Amy Rodriguez',
-    customerEmail: 'amy.r@email.com', items: [{ sku: 'PROB-60', name: 'Probiotic 60 Billion CFU', quantity: 1 }],
+    customerEmail: 'amy.r@email.com', companyId: 'CC-VitaCore',
+    items: [{ sku: 'PROB-60', name: 'Probiotic 60 Billion CFU', quantity: 1 }],
     wooStatus: 'processing', shipmentCarrier: 'USPS', trackingNumber: null,
     shipmentDate: null, shipmentStatus: 'label-created', inventoryStatus: 'reserved',
     operationalStatus: 'packing', supportStatus: 'Preparing shipment',
@@ -140,7 +145,8 @@ export const mockOrders: MasterOrder[] = [
   },
   {
     id: '6', orderId: 'WOO-10426', orderDate: '2026-03-03', customerName: 'David Kim',
-    customerEmail: 'dkim@email.com', items: [{ sku: 'VIT-C-500', name: 'Vitamin C 500mg', quantity: 5 }],
+    customerEmail: 'dkim@email.com', companyId: 'CC-HealthPlus',
+    items: [{ sku: 'VIT-C-500', name: 'Vitamin C 500mg', quantity: 5 }],
     wooStatus: 'on-hold', shipmentCarrier: null, trackingNumber: null,
     shipmentDate: null, shipmentStatus: 'not-shipped', inventoryStatus: 'in-stock',
     operationalStatus: 'awaiting-stock', supportStatus: 'On hold — pending payment confirmation',
@@ -148,7 +154,8 @@ export const mockOrders: MasterOrder[] = [
   },
   {
     id: '7', orderId: 'WOO-10427', orderDate: '2026-03-04', customerName: 'Rachel Green',
-    customerEmail: 'rgreen@email.com', items: [{ sku: 'IRON-65', name: 'Iron 65mg', quantity: 2 }, { sku: 'VIT-B12-1000', name: 'Vitamin B12 1000mcg', quantity: 1 }],
+    customerEmail: 'rgreen@email.com', companyId: 'CC-NutriWell',
+    items: [{ sku: 'IRON-65', name: 'Iron 65mg', quantity: 2 }, { sku: 'VIT-B12-1000', name: 'Vitamin B12 1000mcg', quantity: 1 }],
     wooStatus: 'processing', shipmentCarrier: 'FedEx', trackingNumber: '794644790132',
     shipmentDate: '2026-03-05', shipmentStatus: 'in-transit', inventoryStatus: 'allocated',
     operationalStatus: 'shipped', supportStatus: 'Shipped via FedEx',
@@ -156,7 +163,8 @@ export const mockOrders: MasterOrder[] = [
   },
   {
     id: '8', orderId: 'WOO-10428', orderDate: '2026-03-04', customerName: 'Tom Wallace',
-    customerEmail: 'twallace@email.com', items: [{ sku: 'OMEGA-3-120', name: 'Omega 3 Fish Oil 120ct', quantity: 2 }],
+    customerEmail: 'twallace@email.com', companyId: 'CC-VitaCore',
+    items: [{ sku: 'OMEGA-3-120', name: 'Omega 3 Fish Oil 120ct', quantity: 2 }],
     wooStatus: 'processing', shipmentCarrier: null, trackingNumber: null,
     shipmentDate: null, shipmentStatus: 'not-shipped', inventoryStatus: 'backordered',
     operationalStatus: 'awaiting-stock', supportStatus: 'Backordered — estimated restock March 8',
