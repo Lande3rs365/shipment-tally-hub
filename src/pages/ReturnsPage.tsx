@@ -282,6 +282,51 @@ export default function ReturnsPage() {
                     </div>
                   )}
 
+                  {/* Photo / Video upload */}
+                  {condition && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Inspection Photos / Video
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Upload photos or a short video of the returned item for the inspection team.
+                      </p>
+
+                      <div className="flex flex-wrap gap-3">
+                        {attachments.map((att, i) => (
+                          <div key={i} className="relative w-20 h-20 rounded-lg border border-border overflow-hidden bg-muted/30 group">
+                            {att.type === 'image' ? (
+                              <img src={att.preview} alt={`Return attachment ${i + 1}`} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Camera className="w-6 h-6 text-muted-foreground" />
+                                <span className="absolute bottom-1 text-[9px] text-muted-foreground">Video</span>
+                              </div>
+                            )}
+                            <button
+                              onClick={() => removeAttachment(i)}
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+
+                        <label className="w-20 h-20 rounded-lg border border-dashed border-border bg-muted/20 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+                          <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                          <span className="text-[9px] text-muted-foreground">Add</span>
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            multiple
+                            onChange={handleFileChange}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
                   <Button onClick={handleSubmit} disabled={!canProceed} className="w-full sm:w-auto">
                     Review Return <ArrowRight className="w-4 h-4" />
                   </Button>
