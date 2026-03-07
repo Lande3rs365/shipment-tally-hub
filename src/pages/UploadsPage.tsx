@@ -1,4 +1,4 @@
-import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2 } from "lucide-react";
+import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Eye } from "lucide-react";
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -6,268 +6,145 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useDataIntakeLogs } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { parseWooCommerceCSV, parseShipmentCSV, readFileAsText } from "@/lib/csvParsers";
-import type { ParsedOrder, ParsedShipment } from "@/lib/csvParsers";
+import {
+  parseWooCommerceCSV, parseShipmentCSV, parseMasterXLSX,
+  readFileAsText, readFileAsArrayBuffer,
+} from "@/lib/csvParsers";
+import type { ParsedOrder, ParsedShipment, ParsedMasterRow } from "@/lib/csvParsers";
+import {
+  previewWooCommerceImport, previewShipmentImport, previewMasterImport,
+  importWooCommerceOrders, importShipments, importMasterRows,
+  type ImportPreview,
+} from "@/lib/importHelpers";
 import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { toast } from "@/hooks/use-toast";
 
 const db = supabase as any;
 
-const sources = ['WooCommerce', 'Pirate Ship', 'ShipStation', 'Inventory / Stock', 'Manufacturer Inbound'];
+const sources = ['WooCommerce', 'Pirate Ship', 'ShipStation', 'Master XLSX', 'Inventory / Stock', 'Manufacturer Inbound'];
 
 interface UploadProgress {
   fileName: string;
-  status: "parsing" | "importing" | "done" | "error";
+  status: "parsing" | "previewing" | "importing" | "done" | "error";
   total: number;
   processed: number;
   errors: number;
   message?: string;
 }
 
+interface PendingImport {
+  fileName: string;
+  sourceKey: string;
+  preview: ImportPreview;
+  data: ParsedOrder[] | ParsedShipment[] | ParsedMasterRow[];
+  type: "woocommerce" | "shipment" | "master";
+}
+
 export default function UploadsPage() {
   const [selectedSource, setSelectedSource] = useState(sources[0]);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState<UploadProgress | null>(null);
+  const [pending, setPending] = useState<PendingImport | null>(null);
   const { currentCompany } = useCompany();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: logs = [], isLoading } = useDataIntakeLogs();
 
-  const importWooCommerceOrders = useCallback(async (orders: ParsedOrder[], companyId: string): Promise<{ processed: number; errors: number }> => {
-    let processed = 0;
-    let errors = 0;
-
-    for (const order of orders) {
-      try {
-        // Upsert order by order_number + company_id
-        const { data: existingOrder } = await db
-          .from("orders")
-          .select("id")
-          .eq("company_id", companyId)
-          .eq("order_number", order.order_number)
-          .maybeSingle();
-
-        let orderId: string;
-
-        if (existingOrder) {
-          // Update existing order
-          await db.from("orders").update({
-            order_date: order.order_date,
-            status: order.status,
-            woo_status: order.woo_status,
-            customer_name: order.customer_name,
-            customer_email: order.customer_email,
-            customer_phone: order.customer_phone,
-            shipping_address: order.shipping_address,
-            total_amount: order.total_amount,
-            currency: order.currency,
-            source: order.source,
-          }).eq("id", existingOrder.id);
-          orderId = existingOrder.id;
-
-          // Remove old line items to replace
-          await db.from("order_items").delete().eq("order_id", orderId);
-        } else {
-          // Insert new order
-          const { data: newOrder, error: orderErr } = await db.from("orders").insert({
-            company_id: companyId,
-            order_number: order.order_number,
-            order_date: order.order_date,
-            status: order.status,
-            woo_status: order.woo_status,
-            customer_name: order.customer_name,
-            customer_email: order.customer_email,
-            customer_phone: order.customer_phone,
-            shipping_address: order.shipping_address,
-            total_amount: order.total_amount,
-            currency: order.currency,
-            source: order.source,
-          }).select("id").single();
-
-          if (orderErr) throw orderErr;
-          orderId = newOrder.id;
-        }
-
-        // Insert line items
-        if (order.line_items.length > 0) {
-          const items = order.line_items.map((li) => ({
-            order_id: orderId,
-            sku: li.sku,
-            quantity: li.quantity,
-            unit_price: li.unit_price,
-            line_total: li.line_total,
-          }));
-          await db.from("order_items").insert(items);
-        }
-
-        processed++;
-      } catch (err) {
-        console.error(`Error importing order ${order.order_number}:`, err);
-        errors++;
-      }
-    }
-
-    return { processed, errors };
-  }, []);
-
-  const importShipments = useCallback(async (shipments: ParsedShipment[], companyId: string): Promise<{ processed: number; errors: number }> => {
-    let processed = 0;
-    let errors = 0;
-
-    for (const shipment of shipments) {
-      try {
-        // Find the order by order_number
-        const { data: order } = await db
-          .from("orders")
-          .select("id")
-          .eq("company_id", companyId)
-          .eq("order_number", shipment.order_number)
-          .maybeSingle();
-
-        if (!order) {
-          // Create a stub order if it doesn't exist
-          const { data: newOrder, error: oErr } = await db.from("orders").insert({
-            company_id: companyId,
-            order_number: shipment.order_number,
-            order_date: shipment.order_date,
-            status: shipment.woo_status ? shipment.woo_status : "processing",
-            woo_status: shipment.woo_status || "processing",
-            customer_name: shipment.customer_name,
-            total_amount: shipment.order_total,
-            source: "woocommerce",
-          }).select("id").single();
-          if (oErr) throw oErr;
-          var orderId = newOrder.id;
-        } else {
-          var orderId = order.id;
-        }
-
-        // Check if shipment with same tracking number exists
-        if (shipment.tracking_number) {
-          const { data: existing } = await db
-            .from("shipments")
-            .select("id")
-            .eq("company_id", companyId)
-            .eq("order_id", orderId)
-            .eq("tracking_number", shipment.tracking_number)
-            .maybeSingle();
-
-          if (existing) {
-            // Update existing shipment
-            await db.from("shipments").update({
-              status: shipment.status,
-              shipped_date: shipment.shipped_date,
-              delivered_date: shipment.delivered_date,
-              shipping_cost: shipment.shipping_cost,
-              carrier: shipment.carrier,
-            }).eq("id", existing.id);
-            processed++;
-            continue;
-          }
-        }
-
-        // Insert new shipment
-        await db.from("shipments").insert({
-          company_id: companyId,
-          order_id: orderId,
-          tracking_number: shipment.tracking_number,
-          carrier: shipment.carrier,
-          status: shipment.status,
-          shipped_date: shipment.shipped_date,
-          delivered_date: shipment.delivered_date,
-          shipping_cost: shipment.shipping_cost,
-        });
-
-        processed++;
-      } catch (err) {
-        console.error(`Error importing shipment for order ${shipment.order_number}:`, err);
-        errors++;
-      }
-    }
-
-    return { processed, errors };
-  }, []);
-
   const processFile = useCallback(async (file: File) => {
     if (!currentCompany || !user) return;
-
     const sourceKey = selectedSource.toLowerCase().replace(/\s+\/?\s*/g, "_");
-    
+    const isXlsx = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
+
     setUploading({ fileName: file.name, status: "parsing", total: 0, processed: 0, errors: 0 });
+    setPending(null);
 
     try {
-      const text = await readFileAsText(file);
-      let totalRows = 0;
-      let result = { processed: 0, errors: 0 };
-
-      if (selectedSource === "WooCommerce") {
+      if (selectedSource === "Master XLSX" || (isXlsx && selectedSource === "WooCommerce")) {
+        const buffer = await readFileAsArrayBuffer(file);
+        const rows = parseMasterXLSX(buffer);
+        setUploading(prev => prev ? { ...prev, status: "previewing", total: rows.length } : null);
+        const preview = await previewMasterImport(rows, currentCompany.id);
+        setPending({ fileName: file.name, sourceKey, preview, data: rows, type: "master" });
+        setUploading(null);
+      } else if (selectedSource === "WooCommerce") {
+        const text = await readFileAsText(file);
         const orders = parseWooCommerceCSV(text);
-        totalRows = orders.length;
-        setUploading(prev => prev ? { ...prev, status: "importing", total: totalRows } : null);
-        result = await importWooCommerceOrders(orders, currentCompany.id);
+        setUploading(prev => prev ? { ...prev, status: "previewing", total: orders.length } : null);
+        const preview = await previewWooCommerceImport(orders, currentCompany.id);
+        setPending({ fileName: file.name, sourceKey, preview, data: orders, type: "woocommerce" });
+        setUploading(null);
       } else if (selectedSource === "Pirate Ship" || selectedSource === "ShipStation") {
+        const text = await readFileAsText(file);
         const shipments = parseShipmentCSV(text);
-        totalRows = shipments.length;
-        setUploading(prev => prev ? { ...prev, status: "importing", total: totalRows } : null);
-        result = await importShipments(shipments, currentCompany.id);
+        setUploading(prev => prev ? { ...prev, status: "previewing", total: shipments.length } : null);
+        const preview = await previewShipmentImport(shipments, currentCompany.id);
+        setPending({ fileName: file.name, sourceKey, preview, data: shipments, type: "shipment" });
+        setUploading(null);
       } else {
         toast({ title: "Not supported yet", description: `Parsing for "${selectedSource}" is coming soon.`, variant: "destructive" });
         setUploading(null);
-        return;
+      }
+    } catch (err: any) {
+      console.error("File processing error:", err);
+      setUploading({ fileName: file.name, status: "error", total: 0, processed: 0, errors: 0, message: err.message });
+      toast({ title: "Parse failed", description: err.message, variant: "destructive" });
+      setTimeout(() => setUploading(null), 4000);
+    }
+  }, [currentCompany, selectedSource, user]);
+
+  const confirmImport = useCallback(async () => {
+    if (!pending || !currentCompany || !user) return;
+    const { fileName, sourceKey, preview, data, type } = pending;
+    setPending(null);
+    setUploading({ fileName, status: "importing", total: preview.totalRows, processed: 0, errors: 0 });
+
+    try {
+      let result = { processed: 0, errors: 0 };
+      if (type === "woocommerce") {
+        result = await importWooCommerceOrders(data as ParsedOrder[], currentCompany.id, user.id);
+      } else if (type === "shipment") {
+        result = await importShipments(data as ParsedShipment[], currentCompany.id, user.id);
+      } else if (type === "master") {
+        result = await importMasterRows(data as ParsedMasterRow[], currentCompany.id, user.id);
       }
 
-      // Log the intake
       await db.from("data_intake_logs").insert({
-        company_id: currentCompany.id,
-        file_name: file.name,
-        file_type: file.name.endsWith(".csv") ? "csv" : "xlsx",
-        source_type: sourceKey,
-        status: result.errors > 0 ? "completed_with_errors" : "completed",
-        total_rows: totalRows,
-        processed_rows: result.processed,
-        error_rows: result.errors,
-        uploaded_by: user.id,
-        started_at: new Date().toISOString(),
-        completed_at: new Date().toISOString(),
+        company_id: currentCompany.id, file_name: fileName,
+        file_type: fileName.endsWith(".csv") ? "csv" : "xlsx",
+        source_type: sourceKey, status: result.errors > 0 ? "completed_with_errors" : "completed",
+        total_rows: preview.totalRows, processed_rows: result.processed, error_rows: result.errors,
+        uploaded_by: user.id, started_at: new Date().toISOString(), completed_at: new Date().toISOString(),
       });
 
-      setUploading({ fileName: file.name, status: "done", total: totalRows, processed: result.processed, errors: result.errors });
-
-      // Invalidate relevant queries
+      setUploading({ fileName, status: "done", total: preview.totalRows, processed: result.processed, errors: result.errors });
       queryClient.invalidateQueries({ queryKey: ["data_intake_logs"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["shipments"] });
+      queryClient.invalidateQueries({ queryKey: ["exceptions"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard_stats"] });
 
       toast({
         title: "Import complete",
-        description: `${result.processed} of ${totalRows} rows imported${result.errors > 0 ? ` (${result.errors} errors)` : ""}.`,
+        description: `${result.processed} of ${preview.totalRows} rows imported${result.errors > 0 ? ` (${result.errors} errors)` : ""}.`,
       });
     } catch (err: any) {
-      console.error("File processing error:", err);
+      console.error("Import error:", err);
       setUploading(prev => prev ? { ...prev, status: "error", message: err.message } : null);
       toast({ title: "Import failed", description: err.message, variant: "destructive" });
 
-      // Log the failure
       await db.from("data_intake_logs").insert({
-        company_id: currentCompany.id,
-        file_name: file.name,
-        file_type: file.name.endsWith(".csv") ? "csv" : "xlsx",
-        source_type: sourceKey,
-        status: "failed",
-        total_rows: 0,
-        uploaded_by: user.id,
-        started_at: new Date().toISOString(),
-        completed_at: new Date().toISOString(),
+        company_id: currentCompany.id, file_name: fileName,
+        file_type: fileName.endsWith(".csv") ? "csv" : "xlsx",
+        source_type: sourceKey, status: "failed", total_rows: 0,
+        uploaded_by: user.id, started_at: new Date().toISOString(), completed_at: new Date().toISOString(),
         error_details: { message: err.message },
       });
       queryClient.invalidateQueries({ queryKey: ["data_intake_logs"] });
     }
 
-    // Clear progress after a moment
     setTimeout(() => setUploading(null), 4000);
-  }, [currentCompany, selectedSource, user, queryClient, importWooCommerceOrders, importShipments]);
+  }, [pending, currentCompany, user, queryClient]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -287,7 +164,7 @@ export default function UploadsPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Data Intake</h1>
-        <p className="text-sm text-muted-foreground">Upload order, shipment, inventory, and manufacturer inbound files</p>
+        <p className="text-sm text-muted-foreground">Upload order, shipment, and master hub files (.csv or .xlsx)</p>
       </div>
 
       {/* Source selector */}
@@ -295,7 +172,7 @@ export default function UploadsPage() {
         {sources.map(s => (
           <button
             key={s}
-            onClick={() => setSelectedSource(s)}
+            onClick={() => { setSelectedSource(s); setPending(null); }}
             disabled={!!uploading}
             className={cn(
               "px-4 py-2 rounded-md text-sm border transition-colors",
@@ -310,6 +187,60 @@ export default function UploadsPage() {
         ))}
       </div>
 
+      {/* Import preview / confirmation */}
+      {pending && (
+        <div className="border border-info rounded-lg p-5 bg-info/5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Eye className="w-5 h-5 text-info" />
+            <h3 className="font-semibold text-foreground">Import Preview — {pending.fileName}</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+            {pending.preview.newOrders > 0 && (
+              <div className="bg-card border border-border rounded p-3">
+                <p className="text-xs text-muted-foreground">New Orders</p>
+                <p className="text-lg font-mono font-bold text-success">{pending.preview.newOrders}</p>
+              </div>
+            )}
+            {pending.preview.updatedOrders > 0 && (
+              <div className="bg-card border border-border rounded p-3">
+                <p className="text-xs text-muted-foreground">Updated Orders</p>
+                <p className="text-lg font-mono font-bold text-warning">{pending.preview.updatedOrders}</p>
+              </div>
+            )}
+            {pending.preview.newShipments > 0 && (
+              <div className="bg-card border border-border rounded p-3">
+                <p className="text-xs text-muted-foreground">New Shipments</p>
+                <p className="text-lg font-mono font-bold text-success">{pending.preview.newShipments}</p>
+              </div>
+            )}
+            {pending.preview.updatedShipments > 0 && (
+              <div className="bg-card border border-border rounded p-3">
+                <p className="text-xs text-muted-foreground">Updated Shipments</p>
+                <p className="text-lg font-mono font-bold text-warning">{pending.preview.updatedShipments}</p>
+              </div>
+            )}
+            {pending.preview.onHoldOrders > 0 && (
+              <div className="bg-card border border-border rounded p-3">
+                <p className="text-xs text-muted-foreground">On-Hold → Exceptions</p>
+                <p className="text-lg font-mono font-bold text-destructive">{pending.preview.onHoldOrders}</p>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {pending.preview.updatedOrders > 0 && "Updated orders will have their data replaced with the new file. "}
+            {pending.preview.onHoldOrders > 0 && "On-hold orders will be added to the exception queue for follow-up."}
+          </p>
+          <div className="flex gap-2">
+            <button onClick={confirmImport} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors">
+              Confirm Import ({pending.preview.totalRows} rows)
+            </button>
+            <button onClick={() => setPending(null)} className="px-4 py-2 bg-muted text-muted-foreground rounded-md text-sm hover:bg-accent transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Upload progress */}
       {uploading && (
         <div className={cn(
@@ -318,7 +249,7 @@ export default function UploadsPage() {
           uploading.status === "done" ? "border-success bg-success/5" :
           "border-primary bg-primary/5"
         )}>
-          {uploading.status === "parsing" || uploading.status === "importing" ? (
+          {uploading.status === "parsing" || uploading.status === "importing" || uploading.status === "previewing" ? (
             <Loader2 className="w-5 h-5 text-primary animate-spin" />
           ) : uploading.status === "done" ? (
             <Check className="w-5 h-5 text-success" />
@@ -328,7 +259,8 @@ export default function UploadsPage() {
           <div className="flex-1">
             <p className="text-sm font-medium text-foreground">{uploading.fileName}</p>
             <p className="text-xs text-muted-foreground">
-              {uploading.status === "parsing" && "Parsing CSV..."}
+              {uploading.status === "parsing" && "Parsing file..."}
+              {uploading.status === "previewing" && `Scanning ${uploading.total} rows for preview...`}
               {uploading.status === "importing" && `Importing ${uploading.total} rows...`}
               {uploading.status === "done" && `Done — ${uploading.processed} imported, ${uploading.errors} errors`}
               {uploading.status === "error" && (uploading.message || "Import failed")}
@@ -345,18 +277,18 @@ export default function UploadsPage() {
         className={cn(
           "border-2 border-dashed rounded-lg p-12 text-center transition-colors",
           dragOver ? "border-primary bg-primary/5" : "border-border bg-card",
-          uploading && "opacity-50 pointer-events-none"
+          (uploading || pending) && "opacity-50 pointer-events-none"
         )}
       >
         <Upload className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
         <p className="text-foreground font-medium">Drop {selectedSource} files here</p>
-        <p className="text-sm text-muted-foreground mt-1">CSV files supported</p>
+        <p className="text-sm text-muted-foreground mt-1">CSV and XLSX files supported</p>
         <label className={cn(
           "inline-block mt-4 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm cursor-pointer hover:bg-primary/90 transition-colors",
-          uploading && "pointer-events-none"
+          (uploading || pending) && "pointer-events-none"
         )}>
           Browse Files
-          <input type="file" className="hidden" accept=".csv" onChange={handleFileSelect} />
+          <input type="file" className="hidden" accept=".csv,.xlsx,.xls" onChange={handleFileSelect} />
         </label>
       </div>
 
