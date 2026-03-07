@@ -1,5 +1,8 @@
 import StatusBadge from "@/components/StatusBadge";
-import { mockOrders } from "@/data/mockData";
+import EmptyState from "@/components/EmptyState";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import { useOrders } from "@/hooks/useSupabaseData";
+import { useCompany } from "@/contexts/CompanyContext";
 import { Package, Search } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -7,19 +10,23 @@ import { useNavigate } from "react-router-dom";
 export default function OrdersPage() {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
+  const { currentCompany } = useCompany();
+  const { data: orders = [], isLoading } = useOrders();
 
-  const filtered = mockOrders.filter(o =>
-    o.orderId.toLowerCase().includes(search.toLowerCase()) ||
-    o.customerName.toLowerCase().includes(search.toLowerCase()) ||
-    o.customerEmail.toLowerCase().includes(search.toLowerCase())
+  const filtered = orders.filter(o =>
+    o.order_number.toLowerCase().includes(search.toLowerCase()) ||
+    (o.customer_name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (o.customer_email || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  if (!currentCompany) return <EmptyState icon={Package} title="No company selected" description="Create or join a company to view orders." />;
 
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Master Orders</h1>
-          <p className="text-sm text-muted-foreground">{mockOrders.length} orders · Click any row for detail view</p>
+          <p className="text-sm text-muted-foreground">{orders.length} orders · Click any row for detail view</p>
         </div>
       </div>
 
@@ -34,54 +41,49 @@ export default function OrdersPage() {
         />
       </div>
 
-      <div className="bg-card border border-border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30 text-muted-foreground text-xs uppercase tracking-wider">
-                <th className="text-left py-3 px-4">Order</th>
-                <th className="text-left py-3 px-4">Date</th>
-                <th className="text-left py-3 px-4">Customer</th>
-                <th className="text-left py-3 px-4">Items</th>
-                <th className="text-left py-3 px-4">Woo</th>
-                <th className="text-left py-3 px-4">Shipment</th>
-                <th className="text-left py-3 px-4">Inventory</th>
-                <th className="text-left py-3 px-4">Ops</th>
-                <th className="text-left py-3 px-4">Support</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(order => (
-                <tr
-                  key={order.id}
-                  onClick={() => navigate(`/orders/${order.orderId}`)}
-                  className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer"
-                >
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      {order.exceptionFlag && <span className="w-1.5 h-1.5 rounded-full bg-destructive" />}
-                      <span className="font-mono text-primary font-medium">{order.orderId}</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-muted-foreground font-mono text-xs">{order.orderDate}</td>
-                  <td className="py-3 px-4">
-                    <p className="text-foreground">{order.customerName}</p>
-                    <p className="text-xs text-muted-foreground">{order.customerEmail}</p>
-                  </td>
-                  <td className="py-3 px-4 text-xs text-muted-foreground">
-                    {order.items.map(i => `${i.sku} ×${i.quantity}`).join(', ')}
-                  </td>
-                  <td className="py-3 px-4"><StatusBadge status={order.wooStatus} /></td>
-                  <td className="py-3 px-4"><StatusBadge status={order.shipmentStatus} /></td>
-                  <td className="py-3 px-4"><StatusBadge status={order.inventoryStatus} /></td>
-                  <td className="py-3 px-4"><StatusBadge status={order.operationalStatus} /></td>
-                  <td className="py-3 px-4 text-xs text-muted-foreground max-w-[200px] truncate">{order.supportStatus}</td>
+      {isLoading ? <LoadingSpinner message="Loading orders..." /> : filtered.length === 0 ? (
+        <EmptyState icon={Package} title="No orders yet" description="Orders will appear here once data is imported." />
+      ) : (
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30 text-muted-foreground text-xs uppercase tracking-wider">
+                  <th className="text-left py-3 px-4">Order</th>
+                  <th className="text-left py-3 px-4">Date</th>
+                  <th className="text-left py-3 px-4">Customer</th>
+                  <th className="text-left py-3 px-4">Items</th>
+                  <th className="text-left py-3 px-4">Status</th>
+                  <th className="text-left py-3 px-4">Source</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map(order => (
+                  <tr
+                    key={order.id}
+                    onClick={() => navigate(`/orders/${order.order_number}`)}
+                    className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer"
+                  >
+                    <td className="py-3 px-4 font-mono text-primary font-medium">{order.order_number}</td>
+                    <td className="py-3 px-4 text-muted-foreground font-mono text-xs">
+                      {order.order_date ? new Date(order.order_date).toLocaleDateString() : '—'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <p className="text-foreground">{order.customer_name || '—'}</p>
+                      <p className="text-xs text-muted-foreground">{order.customer_email || ''}</p>
+                    </td>
+                    <td className="py-3 px-4 text-xs text-muted-foreground">
+                      {order.order_items?.map(i => `${i.sku || '?'} ×${i.quantity}`).join(', ') || '—'}
+                    </td>
+                    <td className="py-3 px-4"><StatusBadge status={order.status} /></td>
+                    <td className="py-3 px-4 text-xs text-muted-foreground">{order.source || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
