@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Truck, Warehouse, Upload,
-  AlertTriangle, FileText, Settings, ChevronLeft, ChevronRight
+  AlertTriangle, FileText, ChevronLeft, ChevronRight,
+  ArrowRightLeft, SlidersHorizontal
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
