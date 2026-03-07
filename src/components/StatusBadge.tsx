@@ -29,12 +29,10 @@ const statusMap: Record<string, string> = {
   'high': 'status-out-of-stock',
   'medium': 'status-low-stock',
   'low': 'status-processing',
-  'allocated': 'status-processing',
   'awaiting-replenishment': 'status-low-stock',
   'damaged': 'status-exception',
   'defective': 'status-exception',
   'in-quarantine': 'status-low-stock',
-  'on-hold': 'status-low-stock',
 };
 
 export default function StatusBadge({ status, className }: StatusBadgeProps) {
