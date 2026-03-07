@@ -20,12 +20,17 @@ const CompanyContext = createContext<CompanyContextType>({
 export const useCompany = () => useContext(CompanyContext);
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentCompany, setCurrentCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
     if (!user) {
       setCompanies([]);
       setCurrentCompany(null);
@@ -33,12 +38,17 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let isActive = true;
+
     async function fetchCompanies() {
-      // Get user's company IDs
+      setLoading(true);
+
       const { data: memberships } = await (supabase as any)
-        .from('user_companies')
-        .select('company_id')
-        .eq('user_id', user!.id);
+        .from("user_companies")
+        .select("company_id")
+        .eq("user_id", user.id);
+
+      if (!isActive) return;
 
       if (!memberships || memberships.length === 0) {
         setCompanies([]);
@@ -49,26 +59,32 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
 
       const companyIds = memberships.map((m: any) => m.company_id);
       const { data: companyData } = await (supabase as any)
-        .from('companies')
-        .select('*')
-        .in('id', companyIds);
+        .from("companies")
+        .select("*")
+        .in("id", companyIds);
+
+      if (!isActive) return;
 
       const list = (companyData || []) as Company[];
       setCompanies(list);
 
-      // Restore last selected or use first
-      const savedId = localStorage.getItem('distrohub_company_id');
+      const savedId = localStorage.getItem("distrohub_company_id");
       const saved = list.find(c => c.id === savedId);
       setCurrentCompany(saved || list[0] || null);
       setLoading(false);
     }
 
     fetchCompanies();
-  }, [user]);
+
+    return () => {
+      isActive = false;
+    };
+  }, [user, authLoading]);
 
   const handleSetCompany = (company: Company) => {
+    setCompanies(prev => (prev.some(c => c.id === company.id) ? prev : [...prev, company]));
     setCurrentCompany(company);
-    localStorage.setItem('distrohub_company_id', company.id);
+    localStorage.setItem("distrohub_company_id", company.id);
   };
 
   return (
@@ -77,3 +93,4 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     </CompanyContext.Provider>
   );
 }
+

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -20,8 +21,9 @@ interface LocationEntry {
 }
 
 export default function OnboardingPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
-  const { setCurrentCompany } = useCompany();
+  const { companies, loading: companiesLoading, setCurrentCompany } = useCompany();
   const [step, setStep] = useState<Step>("company");
   const [loading, setLoading] = useState(false);
 
@@ -33,6 +35,12 @@ export default function OnboardingPage() {
   const [locations, setLocations] = useState<LocationEntry[]>([
     { name: "Primary Location", code: "LOC-01", isPrimary: true },
   ]);
+
+  useEffect(() => {
+    if (!companiesLoading && companies.length > 0 && step !== "done") {
+      navigate("/", { replace: true });
+    }
+  }, [companiesLoading, companies.length, navigate, step]);
 
   const handleCompanySubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +114,7 @@ export default function OnboardingPage() {
 
       // 5. Redirect after a moment
       setTimeout(() => {
-        window.location.href = "/";
+        navigate("/", { replace: true });
       }, 1500);
     } catch (err: any) {
       console.error("Onboarding error:", err);
