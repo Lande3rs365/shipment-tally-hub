@@ -84,7 +84,7 @@ export default function OnboardingPage() {
         const { error: locError } = await db
           .from("stock_locations")
           .insert(enabledLocations.map(l => ({
-            company_id: company.id,
+            company_id: companyId,
             name: l.name,
             code: l.code,
             location_type: l.location_type,
