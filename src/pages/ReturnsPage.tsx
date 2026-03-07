@@ -108,7 +108,7 @@ export default function ReturnsPage() {
       quantity,
       condition,
       notes,
-      attachmentCount: attachments.length,
+      
       timestamp: new Date().toISOString(),
       movementType: cfg.movementType,
       direction: cfg.direction,
