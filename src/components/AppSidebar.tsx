@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Truck, Warehouse, Upload,
-  AlertTriangle, FileText, Settings, ChevronLeft, ChevronRight
+  AlertTriangle, FileText, ChevronLeft, ChevronRight,
+  ArrowRightLeft, SlidersHorizontal
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,8 @@ const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/orders", icon: Package, label: "Orders" },
   { to: "/inventory", icon: Warehouse, label: "Inventory" },
+  { to: "/stock-movements", icon: ArrowRightLeft, label: "Stock Ledger" },
+  { to: "/adjustments", icon: SlidersHorizontal, label: "Adjustments" },
   { to: "/shipments", icon: Truck, label: "Shipments" },
   { to: "/uploads", icon: Upload, label: "Data Intake" },
   { to: "/exceptions", icon: AlertTriangle, label: "Exceptions" },

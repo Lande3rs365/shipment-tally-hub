@@ -11,6 +11,8 @@ import ShipmentsPage from "@/pages/ShipmentsPage";
 import UploadsPage from "@/pages/UploadsPage";
 import ExceptionsPage from "@/pages/ExceptionsPage";
 import ExportsPage from "@/pages/ExportsPage";
+import StockMovementsPage from "@/pages/StockMovementsPage";
+import AdjustmentsPage from "@/pages/AdjustmentsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,8 @@ const App = () => (
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/shipments" element={<ShipmentsPage />} />
             <Route path="/uploads" element={<UploadsPage />} />
+            <Route path="/stock-movements" element={<StockMovementsPage />} />
+            <Route path="/adjustments" element={<AdjustmentsPage />} />
             <Route path="/exceptions" element={<ExceptionsPage />} />
             <Route path="/exports" element={<ExportsPage />} />
             <Route path="*" element={<NotFound />} />
