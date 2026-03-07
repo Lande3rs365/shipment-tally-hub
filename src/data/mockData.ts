@@ -197,8 +197,152 @@ export const mockMovements: InventoryMovement[] = [
   { movementId: 'MOV-016', timestamp: '2026-03-06T10:00:00Z', sku: 'VIT-C-500', productName: 'Vitamin C 500mg', quantity: 3, direction: 'OUT', movementType: 'SAMPLE_USE', reasonCode: 'Marketing samples', sourceType: 'Manual', sourceReference: 'ADJ-0306-01', linkedOrderId: null, linkedShipmentId: null, userId: 'ops-user-1', notes: 'Sent to trade show', warehouseLocation: 'A-12', statusBefore: 'in-stock', statusAfter: 'in-stock' },
 ];
 
+// ── Supplier Manifests ──
+export type InboundStatus = 'expected' | 'in-transit' | 'received' | 'partial-receipt' | 'short-receipt' | 'damaged-on-arrival' | 'overdue';
+
+export interface SupplierManifest {
+  manifestId: string;
+  supplierName: string;
+  supplierReference: string;
+  shippedDate: string;
+  expectedArrivalDate: string;
+  receivedDate: string | null;
+  rows: SupplierManifestRow[];
+  inboundStatus: InboundStatus;
+  notes: string;
+  importedAt: string;
+  importedBy: string;
+}
+
+export interface SupplierManifestRow {
+  sku: string;
+  productName: string;
+  quantityShipped: number;
+  quantityReceived: number | null;
+  quantityShort: number;
+  quantityDamaged: number;
+  rowStatus: 'pending' | 'received' | 'short' | 'damaged' | 'partial';
+}
+
+export const mockSupplierManifests: SupplierManifest[] = [
+  {
+    manifestId: 'SM-2026-001', supplierName: 'NutraSource Labs', supplierReference: 'NSL-INV-44821',
+    shippedDate: '2026-02-28', expectedArrivalDate: '2026-03-05', receivedDate: '2026-03-05',
+    inboundStatus: 'received', notes: 'Full pallet received, all items verified',
+    importedAt: '2026-03-01T08:00:00Z', importedBy: 'inv-mgr-1',
+    rows: [
+      { sku: 'VIT-C-500', productName: 'Vitamin C 500mg', quantityShipped: 500, quantityReceived: 500, quantityShort: 0, quantityDamaged: 0, rowStatus: 'received' },
+      { sku: 'VIT-D-1000', productName: 'Vitamin D3 1000IU', quantityShipped: 300, quantityReceived: 300, quantityShort: 0, quantityDamaged: 0, rowStatus: 'received' },
+    ]
+  },
+  {
+    manifestId: 'SM-2026-002', supplierName: 'BioWell Ingredients', supplierReference: 'BW-SHP-9931',
+    shippedDate: '2026-03-02', expectedArrivalDate: '2026-03-07', receivedDate: null,
+    inboundStatus: 'in-transit', notes: 'Tracking: FDX-882716293',
+    importedAt: '2026-03-03T10:00:00Z', importedBy: 'inv-mgr-1',
+    rows: [
+      { sku: 'OMEGA-3-120', productName: 'Omega 3 Fish Oil 120ct', quantityShipped: 200, quantityReceived: null, quantityShort: 0, quantityDamaged: 0, rowStatus: 'pending' },
+      { sku: 'PROB-60', productName: 'Probiotic 60 Billion CFU', quantityShipped: 150, quantityReceived: null, quantityShort: 0, quantityDamaged: 0, rowStatus: 'pending' },
+    ]
+  },
+  {
+    manifestId: 'SM-2026-003', supplierName: 'NutraSource Labs', supplierReference: 'NSL-INV-44910',
+    shippedDate: '2026-03-01', expectedArrivalDate: '2026-03-06', receivedDate: '2026-03-06',
+    inboundStatus: 'short-receipt', notes: 'Collagen shipment 20 units short',
+    importedAt: '2026-03-02T09:00:00Z', importedBy: 'inv-mgr-1',
+    rows: [
+      { sku: 'COLG-TYPE2', productName: 'Collagen Type II', quantityShipped: 100, quantityReceived: 80, quantityShort: 20, quantityDamaged: 0, rowStatus: 'short' },
+    ]
+  },
+  {
+    manifestId: 'SM-2026-004', supplierName: 'MineralPure Co', supplierReference: 'MPC-2026-0088',
+    shippedDate: '2026-02-25', expectedArrivalDate: '2026-03-03', receivedDate: '2026-03-04',
+    inboundStatus: 'damaged-on-arrival', notes: '8 units of ZNC-50 crushed in transit',
+    importedAt: '2026-02-26T11:00:00Z', importedBy: 'warehouse-1',
+    rows: [
+      { sku: 'ZNC-50', productName: 'Zinc 50mg', quantityShipped: 100, quantityReceived: 92, quantityShort: 0, quantityDamaged: 8, rowStatus: 'damaged' },
+      { sku: 'IRON-65', productName: 'Iron 65mg', quantityShipped: 50, quantityReceived: 50, quantityShort: 0, quantityDamaged: 0, rowStatus: 'received' },
+    ]
+  },
+  {
+    manifestId: 'SM-2026-005', supplierName: 'BioWell Ingredients', supplierReference: 'BW-SHP-10012',
+    shippedDate: '2026-02-20', expectedArrivalDate: '2026-02-28', receivedDate: null,
+    inboundStatus: 'overdue', notes: 'Carrier reports delay — no update since Mar 1',
+    importedAt: '2026-02-21T14:00:00Z', importedBy: 'inv-mgr-1',
+    rows: [
+      { sku: 'TURM-500', productName: 'Turmeric Curcumin 500mg', quantityShipped: 200, quantityReceived: null, quantityShort: 0, quantityDamaged: 0, rowStatus: 'pending' },
+    ]
+  },
+];
+
+// ── Order Event Timeline ──
+export interface OrderEvent {
+  timestamp: string;
+  eventType: string;
+  description: string;
+  user: string;
+}
+
+export const mockOrderEvents: Record<string, OrderEvent[]> = {
+  'WOO-10421': [
+    { timestamp: '2026-03-01T08:00:00Z', eventType: 'ORDER_IMPORTED', description: 'Order imported from WooCommerce export', user: 'ops-user-1' },
+    { timestamp: '2026-03-01T08:15:00Z', eventType: 'ORDER_RESERVED', description: 'Stock reserved: VIT-C-500 ×2', user: 'ops-user-1' },
+    { timestamp: '2026-03-02T10:30:00Z', eventType: 'STOCK_ALLOCATED', description: 'Stock allocated for shipment PS-88421', user: 'warehouse-1' },
+    { timestamp: '2026-03-02T14:00:00Z', eventType: 'SHIPMENT_CONFIRMED', description: 'Shipped via USPS — 9400111899223456789012', user: 'warehouse-1' },
+  ],
+  'WOO-10422': [
+    { timestamp: '2026-03-01T08:00:00Z', eventType: 'ORDER_IMPORTED', description: 'Order imported from WooCommerce export', user: 'ops-user-1' },
+    { timestamp: '2026-03-01T08:16:00Z', eventType: 'RESERVATION_FAILED', description: 'OMEGA-3-120 out of stock — reservation failed', user: 'system' },
+    { timestamp: '2026-03-03T09:00:00Z', eventType: 'EXCEPTION_FLAGGED', description: 'Exception: Stock unavailable for fulfillment', user: 'system' },
+  ],
+  'WOO-10423': [
+    { timestamp: '2026-03-02T08:00:00Z', eventType: 'ORDER_IMPORTED', description: 'Order imported from WooCommerce export', user: 'ops-user-1' },
+    { timestamp: '2026-03-02T09:00:00Z', eventType: 'ORDER_RESERVED', description: 'Stock reserved: MAG-400 ×1', user: 'ops-user-1' },
+    { timestamp: '2026-03-03T10:00:00Z', eventType: 'SHIPMENT_CONFIRMED', description: 'Shipped via UPS — 1Z999AA10123456784', user: 'warehouse-1' },
+    { timestamp: '2026-03-04T11:00:00Z', eventType: 'DELIVERED', description: 'Delivered to customer', user: 'system' },
+  ],
+  'WOO-10424': [
+    { timestamp: '2026-03-02T08:00:00Z', eventType: 'ORDER_IMPORTED', description: 'Order imported from WooCommerce export', user: 'ops-user-1' },
+    { timestamp: '2026-03-04T08:00:00Z', eventType: 'EXCEPTION_FLAGGED', description: 'Completed in Woo but no shipment record found', user: 'system' },
+  ],
+  'WOO-10425': [
+    { timestamp: '2026-03-03T08:00:00Z', eventType: 'ORDER_IMPORTED', description: 'Order imported from WooCommerce export', user: 'ops-user-1' },
+    { timestamp: '2026-03-04T10:00:00Z', eventType: 'ORDER_RESERVED', description: 'Stock reserved: PROB-60 ×1', user: 'ops-user-1' },
+    { timestamp: '2026-03-04T15:00:00Z', eventType: 'LABEL_CREATED', description: 'USPS label created — preparing shipment', user: 'warehouse-1' },
+  ],
+};
+
 // ── Exceptions ──
 export const mockExceptions: ExceptionRecord[] = [
+  { id: 'EXC-001', orderId: 'WOO-10422', type: 'Stock Unavailable', severity: 'high', description: 'OMEGA-3-120 out of stock — order cannot be fulfilled', detectedAt: '2026-03-03T09:00:00Z', resolved: false },
+  { id: 'EXC-002', orderId: 'WOO-10424', type: 'Status Mismatch', severity: 'critical', description: 'Order marked completed in WooCommerce but no shipment record exists', detectedAt: '2026-03-04T08:00:00Z', resolved: false },
+  { id: 'EXC-003', orderId: 'WOO-10428', type: 'Backorder', severity: 'medium', description: 'SKU OMEGA-3-120 backordered — no confirmed restock date', detectedAt: '2026-03-05T09:00:00Z', resolved: false },
+  { id: 'EXC-004', orderId: 'WOO-10415', type: 'Missing Tracking', severity: 'low', description: 'Shipment created 5 days ago but tracking not scanning', detectedAt: '2026-03-02T12:00:00Z', resolved: true },
+  { id: 'EXC-005', orderId: 'SM-2026-005', type: 'Overdue Inbound', severity: 'high', description: 'Supplier shipment BW-SHP-10012 overdue — TURM-500 restock blocked', detectedAt: '2026-03-01T00:00:00Z', resolved: false },
+  { id: 'EXC-006', orderId: 'SM-2026-003', type: 'Short Receipt', severity: 'medium', description: 'Supplier manifest SM-2026-003 short 20 units of COLG-TYPE2', detectedAt: '2026-03-06T12:00:00Z', resolved: false },
+];
+
+export const kpiData = {
+  totalOrders: 847,
+  totalShipments: 792,
+  totalSKUs: 156,
+  stockOnHand: 14280,
+  ordersMatched: 768,
+  ordersUnmatched: 79,
+  shipmentsUnmatched: 24,
+  backlogOrders: 43,
+  awaitingShipment: 31,
+  delayedByStock: 18,
+  ordersShipped: 724,
+  missingTracking: 12,
+  exceptions: 9,
+  lowStockItems: 14,
+  outOfStockItems: 5,
+  supplierManifests: 5,
+  inboundExpected: 2,
+  inboundReceived: 3,
+  inboundOverdue: 1,
+};
   { id: 'EXC-001', orderId: 'WOO-10422', type: 'Stock Unavailable', severity: 'high', description: 'OMEGA-3-120 out of stock — order cannot be fulfilled', detectedAt: '2026-03-03T09:00:00Z', resolved: false },
   { id: 'EXC-002', orderId: 'WOO-10424', type: 'Status Mismatch', severity: 'critical', description: 'Order marked completed in WooCommerce but no shipment record exists', detectedAt: '2026-03-04T08:00:00Z', resolved: false },
   { id: 'EXC-003', orderId: 'WOO-10428', type: 'Backorder', severity: 'medium', description: 'SKU OMEGA-3-120 backordered — no confirmed restock date', detectedAt: '2026-03-05T09:00:00Z', resolved: false },
