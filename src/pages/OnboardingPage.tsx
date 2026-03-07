@@ -110,6 +110,10 @@ export default function OnboardingPage() {
       }, 1500);
     } catch (err: any) {
       console.error("Onboarding error:", err);
+      const message = err?.code === "23505"
+        ? "That company code is already taken. Please go back and choose a different one."
+        : err?.message || "Something went wrong. Please try again.";
+      toast({ title: "Setup failed", description: message, variant: "destructive" });
       setLoading(false);
     }
   };
