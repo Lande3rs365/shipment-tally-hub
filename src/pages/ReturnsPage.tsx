@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import {
   RotateCcw, PackageCheck, ShieldAlert, Search as SearchIcon,
-  AlertTriangle, ClipboardCheck, Calendar, ExternalLink,
-  CheckCircle2, ArrowRight
+  AlertTriangle, ClipboardCheck, Camera, X,
+  CheckCircle2, ArrowRight, ImageIcon
 } from "lucide-react";
 
 type ReturnCondition = 'resellable' | 'damaged' | 'defective' | 'inspection-required';
