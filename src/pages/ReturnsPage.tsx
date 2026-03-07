@@ -101,6 +101,26 @@ export default function ReturnsPage() {
     setStep('confirm');
   }
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
+    const newAttachments: ReturnAttachment[] = Array.from(files).map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      type: file.type.startsWith('video/') ? 'video' : 'image',
+    }));
+    setAttachments(prev => [...prev, ...newAttachments]);
+    e.target.value = '';
+  }
+
+  function removeAttachment(index: number) {
+    setAttachments(prev => {
+      const removed = prev[index];
+      URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
   function handleConfirm() {
     if (!condition || !matchedOrder || !matchedItem) return;
     const cfg = conditionConfig[condition];
@@ -112,12 +132,14 @@ export default function ReturnsPage() {
       quantity,
       condition,
       notes,
+      attachmentCount: attachments.length,
       timestamp: new Date().toISOString(),
       movementType: cfg.movementType,
       direction: cfg.direction,
       stockOutcome: cfg.stockOutcome,
     };
     setProcessedReturns(prev => [entry, ...prev]);
+    attachments.forEach(a => URL.revokeObjectURL(a.preview));
     setStep('done');
   }
 
