@@ -2,10 +2,12 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Package, Truck, Warehouse, Upload,
   AlertTriangle, FileText, ChevronLeft, ChevronRight,
-  ArrowRightLeft, SlidersHorizontal, Ship, RotateCcw
+  ArrowRightLeft, SlidersHorizontal, Ship, RotateCcw, LogOut
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
