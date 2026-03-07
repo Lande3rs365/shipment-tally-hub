@@ -15,6 +15,7 @@ import ExportsPage from "@/pages/ExportsPage";
 import StockMovementsPage from "@/pages/StockMovementsPage";
 import AdjustmentsPage from "@/pages/AdjustmentsPage";
 import SupplierManifestsPage from "@/pages/SupplierManifestsPage";
+import ReturnsPage from "@/pages/ReturnsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
