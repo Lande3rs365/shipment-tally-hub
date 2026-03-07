@@ -21,7 +21,7 @@ interface ReturnEntry {
   quantity: number;
   condition: ReturnCondition;
   notes: string;
-  attachmentCount: number;
+  
   timestamp: string;
   movementType: MovementType;
   direction: MovementDirection;
