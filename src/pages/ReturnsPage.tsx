@@ -12,11 +12,6 @@ import {
 
 type ReturnCondition = 'resellable' | 'damaged' | 'defective' | 'inspection-required';
 
-interface ReturnAttachment {
-  file: File;
-  preview: string;
-  type: 'image' | 'video';
-}
 
 interface ReturnEntry {
   id: string;
