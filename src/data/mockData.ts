@@ -6,6 +6,7 @@ export interface MasterOrder {
   orderDate: string;
   customerName: string;
   customerEmail: string;
+  companyId: string;
   items: OrderItem[];
   wooStatus: 'processing' | 'completed' | 'on-hold' | 'cancelled' | 'refunded';
   shipmentCarrier: string | null;
