@@ -1,9 +1,9 @@
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
-import { kpiData, mockOrders, mockExceptions, mockInventory, mockSupplierManifests } from "@/data/mockData";
+import { kpiData, mockOrders, mockExceptions, mockInventory, mockSupplierManifests, mockMovements } from "@/data/mockData";
 import {
   Package, Truck, Warehouse, AlertTriangle, CheckCircle,
-  Clock, XCircle, ArrowUpRight, BarChart3, Ship
+  Clock, XCircle, ArrowUpRight, BarChart3, Ship, RotateCcw
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useNavigate } from "react-router-dom";
@@ -78,7 +78,61 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Supplier Inbound */}
+      {/* Returns Summary */}
+      {(() => {
+        const returnMovements = mockMovements.filter(m =>
+          m.movementType === 'RETURN_RESTOCKED' || m.movementType === 'RETURN_DEFECTIVE' || m.movementType === 'RETURN_QUARANTINE'
+        );
+        const restocked = returnMovements.filter(m => m.movementType === 'RETURN_RESTOCKED');
+        const defective = returnMovements.filter(m => m.movementType === 'RETURN_DEFECTIVE');
+        const quarantine = returnMovements.filter(m => m.movementType === 'RETURN_QUARANTINE');
+        const totalQty = returnMovements.reduce((s, m) => s + m.quantity, 0);
+        const restockedQty = restocked.reduce((s, m) => s + m.quantity, 0);
+        const restockRate = totalQty > 0 ? Math.round((restockedQty / totalQty) * 100) : 0;
+
+        const conditionData = [
+          { label: 'Resellable', count: restocked.length, qty: restockedQty, statusClass: 'status-in-stock' },
+          { label: 'Defective', count: defective.length, qty: defective.reduce((s, m) => s + m.quantity, 0), statusClass: 'status-exception' },
+          { label: 'Quarantine', count: quarantine.length, qty: quarantine.reduce((s, m) => s + m.quantity, 0), statusClass: 'status-low-stock' },
+        ];
+
+        return (
+          <div className="bg-card border border-border rounded-lg p-5">
+            <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-primary" />
+              Returns Summary
+            </h2>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="text-center p-3 rounded-md bg-muted/30 border border-border/50">
+                <p className="text-2xl font-bold font-mono text-foreground">{returnMovements.length}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Returns</p>
+              </div>
+              <div className="text-center p-3 rounded-md bg-muted/30 border border-border/50">
+                <p className="text-2xl font-bold font-mono text-foreground">{totalQty}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Units</p>
+              </div>
+              <div className="text-center p-3 rounded-md bg-muted/30 border border-border/50">
+                <p className="text-2xl font-bold font-mono text-success">{restockRate}%</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">Restock Rate</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Condition Breakdown</p>
+              {conditionData.map(c => (
+                <div key={c.label} className="flex items-center justify-between p-2.5 rounded-md bg-muted/20 border border-border/50">
+                  <div className="flex items-center gap-2">
+                    <span className={`status-badge ${c.statusClass}`}>{c.label}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="text-muted-foreground">{c.count} return{c.count !== 1 ? 's' : ''}</span>
+                    <span className="font-mono font-medium text-foreground">{c.qty} units</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       <div className="bg-card border border-border rounded-lg p-5">
         <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
           <Ship className="w-4 h-4 text-info" />
