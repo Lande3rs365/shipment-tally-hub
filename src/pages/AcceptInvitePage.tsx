@@ -28,7 +28,7 @@ export default function AcceptInvitePage() {
   const token = searchParams.get("token");
   const [inviteCode, setInviteCode] = useState(searchParams.get("code") || "");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string; company_id?: string } | null>(null);
+  const [result, setResult] = useState<InviteResult | null>(null);
 
   // Auto-accept if token is in URL
   useEffect(() => {

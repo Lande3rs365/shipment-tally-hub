@@ -47,6 +47,14 @@ const App = () => (
                 }
               />
               <Route
+                path="/accept-invite"
+                element={
+                  <ProtectedRoute>
+                    <AcceptInvitePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/*"
                 element={
                   <ProtectedRoute>
