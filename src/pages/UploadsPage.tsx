@@ -1,4 +1,4 @@
-import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Eye } from "lucide-react";
+import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Eye, AlertTriangle, Info } from "lucide-react";
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -9,6 +9,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   parseWooCommerceCSV, parseShipmentCSV, parseMasterXLSX,
   readFileAsText, readFileAsArrayBuffer,
+  detectCSVSourceFromText, SOURCE_INFO,
+  type DetectedSource,
 } from "@/lib/csvParsers";
 import type { ParsedOrder, ParsedShipment, ParsedMasterRow } from "@/lib/csvParsers";
 import {
@@ -39,6 +41,18 @@ interface PendingImport {
   preview: ImportPreview;
   data: ParsedOrder[] | ParsedShipment[] | ParsedMasterRow[];
   type: "woocommerce" | "shipment" | "master";
+  detectedSource: DetectedSource;
+  selectedSource: string;
+  mismatch: boolean;
+  overridden: boolean;
+}
+
+interface ImportSummary {
+  selectedSource: string;
+  detectedSource: string;
+  destinationTable: string;
+  rowsImported: number;
+  rowsSkipped: number;
 }
 
 export default function UploadsPage() {
@@ -46,6 +60,7 @@ export default function UploadsPage() {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState<UploadProgress | null>(null);
   const [pending, setPending] = useState<PendingImport | null>(null);
+  const [lastSummary, setLastSummary] = useState<ImportSummary | null>(null);
   const { currentCompany } = useCompany();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -53,11 +68,11 @@ export default function UploadsPage() {
 
   const processFile = useCallback(async (file: File) => {
     if (!currentCompany || !user) return;
-    const sourceKey = selectedSource.toLowerCase().replace(/\s+\/?\s*/g, "_");
     const isXlsx = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
 
     setUploading({ fileName: file.name, status: "parsing", total: 0, processed: 0, errors: 0 });
     setPending(null);
+    setLastSummary(null);
 
     try {
       if (selectedSource === "Master XLSX" || (isXlsx && selectedSource === "WooCommerce")) {
@@ -65,25 +80,41 @@ export default function UploadsPage() {
         const rows = parseMasterXLSX(buffer);
         setUploading(prev => prev ? { ...prev, status: "previewing", total: rows.length } : null);
         const preview = await previewMasterImport(rows, currentCompany.id);
-        setPending({ fileName: file.name, sourceKey, preview, data: rows, type: "master" });
-        setUploading(null);
-      } else if (selectedSource === "WooCommerce") {
-        const text = await readFileAsText(file);
-        const orders = parseWooCommerceCSV(text);
-        setUploading(prev => prev ? { ...prev, status: "previewing", total: orders.length } : null);
-        const preview = await previewWooCommerceImport(orders, currentCompany.id);
-        setPending({ fileName: file.name, sourceKey, preview, data: orders, type: "woocommerce" });
-        setUploading(null);
-      } else if (selectedSource === "Pirate Ship" || selectedSource === "ShipStation") {
-        const text = await readFileAsText(file);
-        const shipments = parseShipmentCSV(text);
-        setUploading(prev => prev ? { ...prev, status: "previewing", total: shipments.length } : null);
-        const preview = await previewShipmentImport(shipments, currentCompany.id);
-        setPending({ fileName: file.name, sourceKey, preview, data: shipments, type: "shipment" });
+        setPending({
+          fileName: file.name, sourceKey: "master_xlsx", preview, data: rows, type: "master",
+          detectedSource: "master_xlsx", selectedSource, mismatch: false, overridden: false,
+        });
         setUploading(null);
       } else {
-        toast({ title: "Not supported yet", description: `Parsing for "${selectedSource}" is coming soon.`, variant: "destructive" });
-        setUploading(null);
+        // CSV — detect source from headers
+        const text = await readFileAsText(file);
+        const detected = detectCSVSourceFromText(text);
+        const selectedKey = selectedSource === "Pirate Ship" || selectedSource === "ShipStation" ? "pirate_ship" : "woocommerce";
+        const mismatch = detected !== "unknown" && detected !== selectedKey;
+
+        if (selectedSource === "Pirate Ship" || selectedSource === "ShipStation" || (mismatch && detected === "pirate_ship")) {
+          const shipments = parseShipmentCSV(text);
+          setUploading(prev => prev ? { ...prev, status: "previewing", total: shipments.length } : null);
+          const preview = await previewShipmentImport(shipments, currentCompany.id);
+          const effectiveSource = mismatch && detected === "pirate_ship" ? "Pirate Ship" : selectedSource;
+          setPending({
+            fileName: file.name, sourceKey: "pirate_ship", preview, data: shipments, type: "shipment",
+            detectedSource: detected, selectedSource, mismatch, overridden: false,
+          });
+          setUploading(null);
+        } else if (selectedSource === "WooCommerce" || (mismatch && detected === "woocommerce")) {
+          const orders = parseWooCommerceCSV(text);
+          setUploading(prev => prev ? { ...prev, status: "previewing", total: orders.length } : null);
+          const preview = await previewWooCommerceImport(orders, currentCompany.id);
+          setPending({
+            fileName: file.name, sourceKey: "woocommerce", preview, data: orders, type: "woocommerce",
+            detectedSource: detected, selectedSource, mismatch, overridden: false,
+          });
+          setUploading(null);
+        } else {
+          toast({ title: "Not supported yet", description: `Parsing for "${selectedSource}" is coming soon.`, variant: "destructive" });
+          setUploading(null);
+        }
       }
     } catch (err: any) {
       console.error("File processing error:", err);
@@ -95,7 +126,8 @@ export default function UploadsPage() {
 
   const confirmImport = useCallback(async () => {
     if (!pending || !currentCompany || !user) return;
-    const { fileName, sourceKey, preview, data, type } = pending;
+    const { fileName, sourceKey, preview, data, type, detectedSource, selectedSource: selSrc } = pending;
+    const destInfo = type === "shipment" ? "shipments" : type === "master" ? "orders + shipments" : "orders";
     setPending(null);
     setUploading({ fileName, status: "importing", total: preview.totalRows, processed: 0, errors: 0 });
 
@@ -118,6 +150,14 @@ export default function UploadsPage() {
       });
 
       setUploading({ fileName, status: "done", total: preview.totalRows, processed: result.processed, errors: result.errors });
+      setLastSummary({
+        selectedSource: selSrc,
+        detectedSource: detectedSource === "pirate_ship" ? "Pirate Ship" : detectedSource === "woocommerce" ? "WooCommerce" : detectedSource === "master_xlsx" ? "Master XLSX" : "Unknown",
+        destinationTable: destInfo,
+        rowsImported: result.processed,
+        rowsSkipped: result.errors + (preview.totalRows - result.processed - result.errors),
+      });
+
       queryClient.invalidateQueries({ queryKey: ["data_intake_logs"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["shipments"] });
@@ -126,7 +166,7 @@ export default function UploadsPage() {
 
       toast({
         title: "Import complete",
-        description: `${result.processed} of ${preview.totalRows} rows imported${result.errors > 0 ? ` (${result.errors} errors)` : ""}.`,
+        description: `${result.processed} of ${preview.totalRows} rows imported to ${destInfo}${result.errors > 0 ? ` (${result.errors} errors)` : ""}.`,
       });
     } catch (err: any) {
       console.error("Import error:", err);
@@ -160,6 +200,8 @@ export default function UploadsPage() {
 
   if (!currentCompany) return <EmptyState icon={Upload} title="No company selected" />;
 
+  const sourceInfo = SOURCE_INFO[selectedSource];
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -172,7 +214,7 @@ export default function UploadsPage() {
         {sources.map(s => (
           <button
             key={s}
-            onClick={() => { setSelectedSource(s); setPending(null); }}
+            onClick={() => { setSelectedSource(s); setPending(null); setLastSummary(null); }}
             disabled={!!uploading}
             className={cn(
               "px-4 py-2 rounded-md text-sm border transition-colors",
@@ -187,13 +229,82 @@ export default function UploadsPage() {
         ))}
       </div>
 
-      {/* Import preview / confirmation */}
-      {pending && (
+      {/* Destination info note */}
+      {sourceInfo && (
+        <div className="flex items-start gap-2 p-3 rounded-md bg-muted/30 border border-border/50 text-xs text-muted-foreground">
+          <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+          <span>
+            <strong className="text-foreground">{sourceInfo.label}</strong> CSVs write to the <strong className="text-foreground font-mono">{sourceInfo.destinationTable}</strong> table and appear on the <strong className="text-foreground">{sourceInfo.destinationPage}</strong> page.
+          </span>
+        </div>
+      )}
+
+      {/* Source mismatch warning */}
+      {pending?.mismatch && !pending.overridden && (
+        <div className="border border-warning rounded-lg p-4 bg-warning/5 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-warning" />
+            <h3 className="font-semibold text-foreground">Source Mismatch Detected</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            You selected <strong className="text-foreground">{pending.selectedSource}</strong> but the CSV headers match{" "}
+            <strong className="text-foreground">{pending.detectedSource === "pirate_ship" ? "Pirate Ship" : "WooCommerce"}</strong>.
+            This could route data to the wrong table.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                // Auto-correct to detected source
+                const correctedSource = pending.detectedSource === "pirate_ship" ? "Pirate Ship" : "WooCommerce";
+                setSelectedSource(correctedSource);
+                setPending(prev => prev ? { ...prev, mismatch: false, selectedSource: correctedSource, sourceKey: pending.detectedSource } : null);
+              }}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors"
+            >
+              Switch to {pending.detectedSource === "pirate_ship" ? "Pirate Ship" : "WooCommerce"}
+            </button>
+            <button
+              onClick={() => setPending(prev => prev ? { ...prev, overridden: true } : null)}
+              className="px-4 py-2 bg-muted text-muted-foreground rounded-md text-sm hover:bg-accent transition-colors"
+            >
+              Keep {pending.selectedSource} anyway
+            </button>
+            <button
+              onClick={() => setPending(null)}
+              className="px-4 py-2 bg-muted text-muted-foreground rounded-md text-sm hover:bg-accent transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Import preview / confirmation (only if no unresolved mismatch) */}
+      {pending && (!pending.mismatch || pending.overridden) && (
         <div className="border border-info rounded-lg p-5 bg-info/5 space-y-3">
           <div className="flex items-center gap-2">
             <Eye className="w-5 h-5 text-info" />
             <h3 className="font-semibold text-foreground">Import Preview — {pending.fileName}</h3>
           </div>
+
+          {/* Destination table badge */}
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-muted-foreground">Source:</span>
+            <span className="font-mono bg-muted px-2 py-0.5 rounded text-foreground">{pending.selectedSource}</span>
+            {pending.detectedSource !== "unknown" && (
+              <>
+                <span className="text-muted-foreground">Detected:</span>
+                <span className="font-mono bg-muted px-2 py-0.5 rounded text-foreground">
+                  {pending.detectedSource === "pirate_ship" ? "Pirate Ship" : pending.detectedSource === "woocommerce" ? "WooCommerce" : "Master XLSX"}
+                </span>
+              </>
+            )}
+            <span className="text-muted-foreground">→</span>
+            <span className="font-mono bg-primary/10 text-primary px-2 py-0.5 rounded font-semibold">
+              {pending.type === "shipment" ? "shipments" : pending.type === "master" ? "orders + shipments" : "orders"}
+            </span>
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
             {pending.preview.newOrders > 0 && (
               <div className="bg-card border border-border rounded p-3">
@@ -232,11 +343,43 @@ export default function UploadsPage() {
           </p>
           <div className="flex gap-2">
             <button onClick={confirmImport} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors">
-              Confirm Import ({pending.preview.totalRows} rows)
+              Confirm Import ({pending.preview.totalRows} rows → {pending.type === "shipment" ? "shipments" : pending.type === "master" ? "orders + shipments" : "orders"})
             </button>
             <button onClick={() => setPending(null)} className="px-4 py-2 bg-muted text-muted-foreground rounded-md text-sm hover:bg-accent transition-colors">
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Import result summary */}
+      {lastSummary && (
+        <div className="border border-success rounded-lg p-4 bg-success/5 space-y-2">
+          <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+            <Check className="w-4 h-4 text-success" />
+            Import Result Summary
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+            <div>
+              <p className="text-muted-foreground">Selected Source</p>
+              <p className="font-mono font-medium text-foreground">{lastSummary.selectedSource}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Detected Source</p>
+              <p className="font-mono font-medium text-foreground">{lastSummary.detectedSource}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Destination Table</p>
+              <p className="font-mono font-medium text-primary">{lastSummary.destinationTable}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Rows Imported</p>
+              <p className="font-mono font-bold text-success">{lastSummary.rowsImported}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Rows Skipped</p>
+              <p className="font-mono font-medium text-warning">{lastSummary.rowsSkipped}</p>
+            </div>
           </div>
         </div>
       )}

@@ -276,6 +276,43 @@ export function parseMasterXLSX(data: ArrayBuffer): ParsedMasterRow[] {
   }).filter(r => r.order_number);
 }
 
+// ── Auto-Detection ──
+
+export type DetectedSource = 'pirate_ship' | 'woocommerce' | 'master_xlsx' | 'unknown';
+
+const PIRATE_SHIP_HEADERS = ['tracking number', 'tracking status', 'recipient', 'ship date', 'carrier', 'cost'];
+const WOOCOMMERCE_HEADERS = ['order_id', 'billing_first_name', 'billing_email', 'order_total', 'shipping_address_1'];
+
+export function detectCSVSource(headers: string[]): DetectedSource {
+  const lower = headers.map(h => h.trim().toLowerCase().replace(/\s+/g, ' '));
+  const pirateHits = PIRATE_SHIP_HEADERS.filter(ph => lower.some(h => h.includes(ph))).length;
+  const wooHits = WOOCOMMERCE_HEADERS.filter(wh => lower.some(h => h.includes(wh))).length;
+
+  if (pirateHits >= 3) return 'pirate_ship';
+  if (wooHits >= 3) return 'woocommerce';
+  return 'unknown';
+}
+
+export function detectCSVSourceFromText(csvText: string): DetectedSource {
+  const firstLine = csvText.split('\n')[0] || '';
+  const headers = firstLine.replace(/"/g, '').split(',');
+  return detectCSVSource(headers);
+}
+
+export interface SourceInfo {
+  key: string;
+  label: string;
+  destinationTable: string;
+  destinationPage: string;
+}
+
+export const SOURCE_INFO: Record<string, SourceInfo> = {
+  'WooCommerce': { key: 'woocommerce', label: 'WooCommerce', destinationTable: 'orders', destinationPage: 'Orders' },
+  'Pirate Ship': { key: 'pirate_ship', label: 'Pirate Ship', destinationTable: 'shipments', destinationPage: 'Shipments' },
+  'ShipStation': { key: 'shipstation', label: 'ShipStation', destinationTable: 'shipments', destinationPage: 'Shipments' },
+  'Master XLSX': { key: 'master_xlsx', label: 'Master XLSX', destinationTable: 'orders + shipments', destinationPage: 'Orders & Shipments' },
+};
+
 // ── File reading helpers ──
 
 export function readFileAsText(file: File): Promise<string> {
