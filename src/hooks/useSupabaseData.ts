@@ -274,6 +274,8 @@ export function useDashboardStats() {
         recentMovements: movementList,
         manifests: manifestList,
         recentOrders: recentOrders.data || [],
+        allOrders: orderList,
+        allShipments: shipmentList,
       };
     },
     enabled: !!currentCompany?.id,
