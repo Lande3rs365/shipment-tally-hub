@@ -79,19 +79,14 @@ export default function OnboardingPage() {
       const db = supabase as any;
       const companyId = crypto.randomUUID();
 
-      // 1. Create company
-      const { error: companyError } = await db
-        .from("companies")
-        .insert({ id: companyId, name: companyName.trim(), code: companyCode.trim().toUpperCase() });
+      // 1. Atomically create company + owner membership via secure function
+      const { error: createError } = await db.rpc('create_company_with_owner', {
+        _company_id: companyId,
+        _company_name: companyName.trim(),
+        _company_code: companyCode.trim().toUpperCase(),
+      });
 
-      if (companyError) throw companyError;
-
-      // 2. Link user to company
-      const { error: linkError } = await db
-        .from("user_companies")
-        .insert({ user_id: user.id, company_id: companyId, role: "owner" });
-
-      if (linkError) throw linkError;
+      if (createError) throw createError;
 
       // 3. Create stock locations
       const validLocations = locations.filter(l => l.name.trim() && l.code.trim());
