@@ -1,0 +1,1 @@
+ALTER TABLE public.exceptions ADD COLUMN IF NOT EXISTS follow_up_due_at timestamp with time zone DEFAULT NULL;

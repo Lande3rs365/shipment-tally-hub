@@ -107,6 +107,7 @@ export type Database = {
           created_by: string | null
           description: string | null
           exception_type: string
+          follow_up_due_at: string | null
           id: string
           linked_manifest_id: string | null
           linked_order_id: string | null
@@ -126,6 +127,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           exception_type: string
+          follow_up_due_at?: string | null
           id?: string
           linked_manifest_id?: string | null
           linked_order_id?: string | null
@@ -145,6 +147,7 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           exception_type?: string
+          follow_up_due_at?: string | null
           id?: string
           linked_manifest_id?: string | null
           linked_order_id?: string | null

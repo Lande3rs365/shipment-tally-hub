@@ -236,8 +236,8 @@ export function useDashboardStats() {
       const cid = currentCompany!.id;
 
       const [orders, shipments, products, inventory, exceptions, movements, manifests, recentOrders] = await Promise.all([
-        db.from('orders').select('id, status', { count: 'exact' }).eq('company_id', cid),
-        db.from('shipments').select('id, status', { count: 'exact' }).eq('company_id', cid),
+        db.from('orders').select('id, status, order_date, created_at').eq('company_id', cid),
+        db.from('shipments').select('id, status, shipped_date, created_at').eq('company_id', cid),
         db.from('products').select('id', { count: 'exact' }).eq('company_id', cid).eq('is_active', true),
         db.from('inventory').select('*, products(sku, name, reorder_point)').eq('company_id', cid),
         db.from('exceptions').select('*').eq('company_id', cid).eq('status', 'open'),
@@ -274,6 +274,8 @@ export function useDashboardStats() {
         recentMovements: movementList,
         manifests: manifestList,
         recentOrders: recentOrders.data || [],
+        allOrders: orderList,
+        allShipments: shipmentList,
       };
     },
     enabled: !!currentCompany?.id,

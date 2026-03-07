@@ -1,4 +1,7 @@
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
+
+// ── Shared Types ──
 
 export interface ParsedOrder {
   order_number: string;
@@ -23,14 +26,48 @@ export interface ParsedLineItem {
   line_total: number | null;
 }
 
+export interface ParsedShipment {
+  order_number: string;
+  tracking_number: string | null;
+  carrier: string | null;
+  service: string | null;
+  status: string;
+  shipped_date: string | null;
+  delivered_date: string | null;
+  shipping_cost: number | null;
+  weight_grams: number | null;
+  order_date: string | null;
+  woo_status: string | null;
+  order_total: number | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  items: string | null;
+  shipping_country: string | null;
+}
+
+/** Combined row from master XLSX — has both order + shipment data */
+export interface ParsedMasterRow {
+  order_number: string;
+  order_date: string | null;
+  woo_status: string;
+  status: string;
+  total_amount: number | null;
+  customer_name: string | null;
+  items: string | null;
+  shipping_country: string | null;
+  tracking_number: string | null;
+  carrier: string | null;
+  service: string | null;
+  tracking_status: string;
+  tracking_date: string | null;
+  est_delivery: string | null;
+  shipping_cost: number | null;
+}
+
+// ── Helpers ──
+
 function parseLineItem(raw: string): ParsedLineItem | null {
   if (!raw || !raw.trim()) return null;
-  // Typical WooCommerce line item format varies, but common patterns:
-  // "Product Name (SKU: ABC123) x 2 @ $10.00 = $20.00"
-  // "Product Name | SKU: ABC123 | Qty: 2 | Total: $20.00"
-  // Or just: "Product Name x2"
-  // We'll try multiple patterns
-
   const trimmed = raw.trim();
 
   // Pattern: "name (SKU: xxx) x qty @ price = total"
@@ -45,14 +82,13 @@ function parseLineItem(raw: string): ParsedLineItem | null {
     };
   }
 
-  // Pattern: pipe-delimited "name | SKU: xxx | Qty: 2 | Total: $20"
+  // Pipe-delimited
   if (trimmed.includes("|")) {
     const parts = trimmed.split("|").map(p => p.trim());
     const name = parts[0] || trimmed;
     let sku: string | null = null;
     let qty = 1;
     let total: number | null = null;
-
     for (const part of parts.slice(1)) {
       const skuMatch = part.match(/SKU:\s*(.+)/i);
       if (skuMatch) sku = skuMatch[1].trim();
@@ -61,42 +97,28 @@ function parseLineItem(raw: string): ParsedLineItem | null {
       const totalMatch = part.match(/Total:\s*\$?([\d.]+)/i);
       if (totalMatch) total = parseFloat(totalMatch[1]);
     }
-
     return { name, sku, quantity: qty, unit_price: total && qty ? total / qty : null, line_total: total };
   }
 
-  // Pattern: simple "name x qty"
+  // Simple "name x qty"
   const simpleMatch = trimmed.match(/^(.+?)\s*[x×]\s*(\d+)$/i);
   if (simpleMatch) {
-    return {
-      name: simpleMatch[1].trim(),
-      sku: null,
-      quantity: parseInt(simpleMatch[2]) || 1,
-      unit_price: null,
-      line_total: null,
-    };
+    return { name: simpleMatch[1].trim(), sku: null, quantity: parseInt(simpleMatch[2]) || 1, unit_price: null, line_total: null };
   }
 
-  // Fallback: just the name
   return { name: trimmed, sku: null, quantity: 1, unit_price: null, line_total: null };
 }
 
 function buildShippingAddress(row: Record<string, string>): string | null {
   const parts = [
-    row.shipping_address_1,
-    row.shipping_address_2,
-    row.shipping_city,
-    row.shipping_state,
-    row.shipping_postcode,
-    row.shipping_country,
+    row.shipping_address_1, row.shipping_address_2, row.shipping_city,
+    row.shipping_state, row.shipping_postcode, row.shipping_country,
   ].filter(Boolean);
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
 function normalizeStatus(status: string): string {
-  // WooCommerce statuses: processing, on-hold, completed, cancelled, refunded, failed, pending, trash
-  const s = status.toLowerCase().replace(/^wc-/, "").trim();
-  return s || "processing";
+  return (status || "").toLowerCase().replace(/^wc-/, "").trim() || "processing";
 }
 
 function mapToInternalStatus(wooStatus: string): string {
@@ -113,31 +135,48 @@ function mapToInternalStatus(wooStatus: string): string {
   return map[wooStatus] || "pending";
 }
 
+function mapTrackingStatus(raw: string): string {
+  const s = (raw || "").toLowerCase().trim();
+  if (s.includes("deliver")) return "delivered";
+  if (s.includes("transit") || s.includes("shipped") || s.includes("arrived") || s.includes("departed")) return "in-transit";
+  if (s.includes("label") || s.includes("created") || s.includes("pre") || s.includes("new label") || s.includes("not scanned")) return "label-created";
+  if (s.includes("pick") || s.includes("accept")) return "in-transit";
+  return s || "label-created";
+}
+
+function safeDateISO(val: string | undefined | null): string | null {
+  if (!val) return null;
+  try {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  } catch { return null; }
+}
+
+function safeFloat(val: string | undefined | null): number | null {
+  if (!val) return null;
+  const n = parseFloat(String(val).replace(/[^0-9.-]/g, ""));
+  return isNaN(n) ? null : n;
+}
+
+// ── WooCommerce CSV Parser ──
+
 export function parseWooCommerceCSV(csvText: string): ParsedOrder[] {
   const result = Papa.parse<Record<string, string>>(csvText, {
-    header: true,
-    skipEmptyLines: true,
+    header: true, skipEmptyLines: true,
     transformHeader: (h) => h.trim().toLowerCase().replace(/\s+/g, "_"),
   });
-
-  if (result.errors.length > 0) {
-    console.warn("CSV parse warnings:", result.errors);
-  }
+  if (result.errors.length > 0) console.warn("CSV parse warnings:", result.errors);
 
   return result.data.map((row) => {
     const wooStatus = normalizeStatus(row.status || "");
     const lineItems: ParsedLineItem[] = [];
-
-    // Parse line_item_1 through line_item_23
     for (let i = 1; i <= 23; i++) {
-      const raw = row[`line_item_${i}`];
-      const item = parseLineItem(raw || "");
+      const item = parseLineItem(row[`line_item_${i}`] || "");
       if (item) lineItems.push(item);
     }
-
     return {
       order_number: (row.order_id || "").trim(),
-      order_date: row.order_date ? new Date(row.order_date).toISOString() : null,
+      order_date: safeDateISO(row.order_date),
       status: mapToInternalStatus(wooStatus),
       woo_status: wooStatus,
       customer_name: [row.billing_first_name, row.billing_last_name].filter(Boolean).join(" ") || null,
@@ -152,66 +191,92 @@ export function parseWooCommerceCSV(csvText: string): ParsedOrder[] {
   }).filter(o => o.order_number);
 }
 
-// ── Shipment CSV Parser ──
-// Headers: Order Number, Order Date, WOO Status, Order Total, Customer Name, Items,
-// shipping_country, Tracking Number, Carrier, Service, Tracking Status, Tracking Date, Est Deliver, Cost
-
-export interface ParsedShipment {
-  order_number: string;
-  tracking_number: string | null;
-  carrier: string | null;
-  status: string;
-  shipped_date: string | null;
-  delivered_date: string | null;
-  shipping_cost: number | null;
-  // For matching/creating the order if needed
-  order_date: string | null;
-  woo_status: string | null;
-  order_total: number | null;
-  customer_name: string | null;
-  items: string | null;
-}
-
-function mapTrackingStatus(raw: string): string {
-  const s = (raw || "").toLowerCase().trim();
-  if (s.includes("deliver")) return "delivered";
-  if (s.includes("transit") || s.includes("shipped")) return "in-transit";
-  if (s.includes("label") || s.includes("created") || s.includes("pre")) return "label-created";
-  if (s.includes("pick") || s.includes("accept")) return "in-transit";
-  return s || "label-created";
-}
+// ── Pirate Ship / ShipStation CSV Parser ──
+// Maps actual Pirate Ship headers: Order ID, Recipient, Email, Tracking Number, Cost, etc.
 
 export function parseShipmentCSV(csvText: string): ParsedShipment[] {
   const result = Papa.parse<Record<string, string>>(csvText, {
-    header: true,
-    skipEmptyLines: true,
+    header: true, skipEmptyLines: true,
     transformHeader: (h) => h.trim().toLowerCase().replace(/\s+/g, "_"),
   });
-
-  if (result.errors.length > 0) {
-    console.warn("CSV parse warnings:", result.errors);
-  }
+  if (result.errors.length > 0) console.warn("CSV parse warnings:", result.errors);
 
   return result.data.map((row) => {
+    // Handle both Pirate Ship headers and generic shipment headers
+    const orderNum = (row.order_id || row.order_number || "").toString().trim();
     const trackingStatus = mapTrackingStatus(row.tracking_status || "");
-    const trackingDate = row.tracking_date ? new Date(row.tracking_date).toISOString() : null;
-    
+    const shipDate = safeDateISO(row.ship_date || row.tracking_date || null);
+    const weightOz = safeFloat(row["weight_(oz)"] || row.weight_oz || row.weight);
+    const weightGrams = weightOz != null ? Math.round(weightOz * 28.3495) : null;
+
     return {
-      order_number: (row.order_number || "").trim(),
+      order_number: orderNum,
       tracking_number: (row.tracking_number || "").trim() || null,
       carrier: (row.carrier || "").trim() || null,
+      service: (row.service || "").trim() || null,
       status: trackingStatus,
-      shipped_date: trackingStatus !== "label-created" ? trackingDate : null,
-      delivered_date: trackingStatus === "delivered" ? trackingDate : null,
-      shipping_cost: row.cost ? parseFloat(row.cost.replace(/[^0-9.]/g, "")) : null,
-      order_date: row.order_date ? new Date(row.order_date).toISOString() : null,
-      woo_status: (row.woo_status || "").toLowerCase().replace(/^wc-/, "").trim() || null,
-      order_total: row.order_total ? parseFloat(row.order_total.replace(/[^0-9.]/g, "")) : null,
-      customer_name: (row.customer_name || "").trim() || null,
+      shipped_date: trackingStatus !== "label-created" ? shipDate : null,
+      delivered_date: trackingStatus === "delivered" ? shipDate : null,
+      shipping_cost: safeFloat(row.cost),
+      weight_grams: weightGrams,
+      order_date: safeDateISO(row.created_date || row.order_date || null),
+      woo_status: null,
+      order_total: safeFloat(row.order_value || row.order_total),
+      customer_name: (row.recipient || row.customer_name || "").trim() || null,
+      customer_email: (row.email || "").trim() || null,
       items: (row.items || "").trim() || null,
+      shipping_country: (row.country || row.shipping_country || "").trim() || null,
     };
-  }).filter(s => s.order_number);
+  }).filter(s => s.tracking_number); // Only include rows with tracking numbers
 }
+
+// ── Master XLSX Parser ──
+// Parses the "All Orders Master" tab from the XLSX hub
+
+export function parseMasterXLSX(data: ArrayBuffer): ParsedMasterRow[] {
+  const workbook = XLSX.read(data, { type: "array", cellDates: true });
+
+  // Find the sheet — try "All Orders Master" first, fall back to third sheet or first
+  let sheetName = workbook.SheetNames.find(n =>
+    n.toLowerCase().includes("all orders") || n.toLowerCase().includes("master")
+  );
+  if (!sheetName && workbook.SheetNames.length >= 3) sheetName = workbook.SheetNames[2];
+  if (!sheetName) sheetName = workbook.SheetNames[0];
+
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+
+  return rows.map((row) => {
+    // Normalize keys — XLSX sometimes keeps original casing
+    const r: Record<string, string> = {};
+    for (const [k, v] of Object.entries(row)) {
+      r[k.trim().toLowerCase().replace(/[#\s]+/g, "_")] = String(v ?? "").trim();
+    }
+
+    const orderNum = (r.order_ || r.order_number || r.order_id || r["order#"] || "").trim();
+    const wooStatus = normalizeStatus(r.woo_status || "");
+
+    return {
+      order_number: orderNum,
+      order_date: safeDateISO(r.order_date),
+      woo_status: wooStatus,
+      status: mapToInternalStatus(wooStatus),
+      total_amount: safeFloat(r.order_total),
+      customer_name: (r.customer_name || "").trim() || null,
+      items: (r.items || "").trim() || null,
+      shipping_country: (r.shipping_country || "").trim() || null,
+      tracking_number: (r.tracking_number || "").trim() || null,
+      carrier: (r.carrier || "").trim() || null,
+      service: (r.service || "").trim() || null,
+      tracking_status: mapTrackingStatus(r.tracking_status || ""),
+      tracking_date: safeDateISO(r.tracking_date),
+      est_delivery: (r.est_delivery || r.est_deliver || "").trim() || null,
+      shipping_cost: safeFloat(r.cost),
+    };
+  }).filter(r => r.order_number);
+}
+
+// ── File reading helpers ──
 
 export function readFileAsText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -219,5 +284,14 @@ export function readFileAsText(file: File): Promise<string> {
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = () => reject(reader.error);
     reader.readAsText(file);
+  });
+}
+
+export function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
   });
 }
