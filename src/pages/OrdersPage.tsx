@@ -2,9 +2,12 @@ import StatusBadge from "@/components/StatusBadge";
 import { mockOrders } from "@/data/mockData";
 import { Package, Search } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function OrdersPage() {
   const [search, setSearch] = useState("");
+  const navigate = useNavigate();
+
   const filtered = mockOrders.filter(o =>
     o.orderId.toLowerCase().includes(search.toLowerCase()) ||
     o.customerName.toLowerCase().includes(search.toLowerCase()) ||
@@ -16,7 +19,7 @@ export default function OrdersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Master Orders</h1>
-          <p className="text-sm text-muted-foreground">{mockOrders.length} orders · Single source of truth</p>
+          <p className="text-sm text-muted-foreground">{mockOrders.length} orders · Click any row for detail view</p>
         </div>
       </div>
 
@@ -49,7 +52,11 @@ export default function OrdersPage() {
             </thead>
             <tbody>
               {filtered.map(order => (
-                <tr key={order.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                <tr
+                  key={order.id}
+                  onClick={() => navigate(`/orders/${order.orderId}`)}
+                  className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer"
+                >
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2">
                       {order.exceptionFlag && <span className="w-1.5 h-1.5 rounded-full bg-destructive" />}
