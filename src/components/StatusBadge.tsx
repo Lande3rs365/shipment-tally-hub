@@ -14,6 +14,7 @@ const statusMap: Record<string, string> = {
   'cancelled': 'status-exception',          // red
   'refunded': 'status-exception',           // red
   'pending': 'status-muted',               // grey/muted
+  'new': 'status-muted',                    // grey/muted — new ticket
   'failed': 'status-exception',             // red
 
   // Shipment statuses

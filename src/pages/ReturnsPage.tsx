@@ -21,6 +21,18 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 
+// ── Map return DB status to standard ticket statuses ──
+const mapReturnStatus = (status: string | null, stockOutcome: string | null): string => {
+  switch (status) {
+    case 'initiated': return 'new';
+    case 'approved': return 'processing';
+    case 'received': return 'processing';
+    case 'resolved': return stockOutcome === 'refund' ? 'refunded' : 'completed';
+    case 'rejected': return 'cancelled';
+    default: return status?.replace(/_/g, '-') || 'pending';
+  }
+};
+
 // ── Return reason categories ──
 type ReturnReason = 'exchanged' | 'warranty_replacement' | 'damaged_on_arrival' | 'missing_item' | 'incorrect_item' | 'shipping' | 'customs' | 'other';
 
@@ -425,7 +437,7 @@ const ReturnsTable = ({ returns, isLoading }: { returns: any[]; isLoading: boole
                     {r.return_qty ?? '—'}
                   </td>
                   <td className="py-2 px-3">
-                    <StatusBadge status={r.status?.replace(/_/g, ' ') || '—'} />
+                    <StatusBadge status={mapReturnStatus(r.status, r.stock_outcome)} />
                   </td>
                 </tr>
               ))}
