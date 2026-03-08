@@ -42,14 +42,21 @@ Deno.serve(async (req) => {
     }
 
     // Pass 2: Insert variants with parent_product_id
-    // Resolve parent by removing last SKU segment
+    // Walk up SKU segments to find the matching parent
     const variantRows = variants.map((v: any) => {
       const segments = v.sku.split('-');
-      const parentSku = segments.length >= 3 ? segments.slice(0, -1).join('-') : null;
+      let parentId: string | null = null;
+      for (let len = segments.length - 1; len >= 2; len--) {
+        const candidate = segments.slice(0, len).join('-');
+        if (skuToId.has(candidate)) {
+          parentId = skuToId.get(candidate)!;
+          break;
+        }
+      }
       return {
         company_id, sku: v.sku, name: v.name,
         category: v.category, row_type: v.row_type, description: v.description,
-        parent_product_id: parentSku ? skuToId.get(parentSku) || null : null,
+        parent_product_id: parentId,
       };
     });
 
