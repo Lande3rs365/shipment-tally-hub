@@ -146,6 +146,11 @@ export default function ProductsPage() {
     } else {
       list = tab.categories.flatMap(c => productsByCategory[c] || []);
     }
+    // Channel filter for Playing Cues
+    if (tab.key === 'playing_cues' && channelFilter !== 'all') {
+      const prefix = channelFilter + '-';
+      list = list.filter(p => p.sku.startsWith(prefix));
+    }
     if (search) {
       const s = search.toLowerCase();
       list = list.filter(p =>
@@ -155,7 +160,7 @@ export default function ProductsPage() {
       );
     }
     return list;
-  }, [products, productsByCategory, search]);
+  }, [products, productsByCategory, search, channelFilter]);
 
   const toggleParent = (id: string) => {
     setExpandedParents(prev => {
