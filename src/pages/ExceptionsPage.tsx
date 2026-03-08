@@ -144,17 +144,9 @@ export default function ExceptionsPage() {
       {/* Header */}
       <div className="flex items-end gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Exception Queue</h1>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-xs font-medium">
-            {active.length} Active
-          </Badge>
-          <Badge variant="outline" className="text-xs font-medium border-amber-500/40 text-amber-600">
-            {sortedActive.onHold.length} On Hold
-          </Badge>
-          <Badge variant="outline" className="text-xs font-medium border-green-500/40 text-green-600">
-            {resolved.length} Resolved
-          </Badge>
-        </div>
+        <Badge variant="outline" className="text-xs font-medium border-amber-500/40 text-amber-600">
+          {sortedActive.onHold.length} On Hold
+        </Badge>
       </div>
 
       {isLoading ? (
