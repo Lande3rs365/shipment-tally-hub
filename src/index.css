@@ -100,6 +100,12 @@
   .status-exception {
     @apply bg-[hsl(0_72%_51%/0.15)] text-[hsl(0_72%_51%)];
   }
+  .status-on-hold {
+    @apply bg-[hsl(25_95%_53%/0.15)] text-[hsl(25_95%_53%)];
+  }
+  .status-muted {
+    @apply bg-muted text-muted-foreground;
+  }
 
   .kpi-card {
     @apply bg-card border border-border rounded-lg p-5 relative overflow-hidden;
