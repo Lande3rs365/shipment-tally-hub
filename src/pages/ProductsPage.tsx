@@ -127,9 +127,12 @@ export default function ProductsPage() {
   // KPI counts
   const counts = useMemo(() => ({
     total: products.length,
-    parents: products.filter(p => p.row_type === 'parent').length,
-    variants: products.filter(p => p.row_type === 'variant').length,
-    standalone: products.filter(p => p.row_type === 'standalone').length,
+    shafts: products.filter(p => p.category === 'shaft').length,
+    playingCues: products.filter(p => p.category === 'playing_cue').length,
+    breakJump: products.filter(p => ['break_cue', 'jump_cue', 'break_jump'].includes(p.category || '')).length,
+    cases: products.filter(p => p.category === 'case').length,
+    accessories: products.filter(p => p.category === 'accessory').length,
+    apparel: products.filter(p => p.category === 'apparel').length,
   }), [products]);
 
   // Get filtered products for current tab
