@@ -587,7 +587,7 @@ const SKU_STRUCTURE = [
   { prefix: 'APP-', label: 'Apparel', pattern: 'APP-{Gender}-{Design}[-{Size}]', example: 'APP-MJ-PATRIOT-USA-S', hierarchy: 'Size=PARENT → parent, else variant' },
 ];
 
-function OverviewTab({ totalProducts, productsByCategory }: { totalProducts: number; productsByCategory: Record<string, Product[]> }) {
+function OverviewTab({ productsByCategory }: { productsByCategory: Record<string, Product[]> }) {
   return (
     <div className="space-y-6">
       {/* Category breakdown cards */}
