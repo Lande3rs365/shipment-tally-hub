@@ -173,6 +173,7 @@ export async function importShipments(shipments: ParsedShipment[], companyId: st
             carrier: shipment.carrier, weight_grams: shipment.weight_grams, order_id: orderId,
           }).eq("id", existing.id);
           processed++;
+          onProgress?.(processed, errors);
           continue;
         }
       }
