@@ -105,6 +105,7 @@ type FilterKey = 'overview' | string;
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterKey>("overview");
+  const [channelFilter, setChannelFilter] = useState<"all" | "JF" | "DL">("all");
   const [editing, setEditing] = useState<EditingRow | null>(null);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [addDialogOpen, setAddDialogOpen] = useState(false);
