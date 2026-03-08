@@ -135,7 +135,7 @@ export async function importWooCommerceOrders(orders: ParsedOrder[], companyId: 
   return { processed, errors };
 }
 
-export async function importShipments(shipments: ParsedShipment[], companyId: string, userId: string): Promise<ImportResult> {
+export async function importShipments(shipments: ParsedShipment[], companyId: string, userId: string, onProgress?: ProgressCallback): Promise<ImportResult> {
   let processed = 0, errors = 0;
 
   for (const shipment of shipments) {
