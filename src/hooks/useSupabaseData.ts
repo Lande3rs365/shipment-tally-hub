@@ -246,15 +246,24 @@ export function useDashboardStats() {
     queryFn: async () => {
       const cid = currentCompany!.id;
 
-      const [orders, shipments, products, inventory, exceptions, movements, manifests, recentOrders] = await Promise.all([
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayISO = todayStart.toISOString();
+
+      const [orders, shipments, products, inventory, exceptions, movements, manifests, todayProcessing, todayShipments, oldestExceptions] = await Promise.all([
         db.from('orders').select('id, status, order_date, created_at').eq('company_id', cid),
         db.from('shipments').select('id, status, shipped_date, created_at').eq('company_id', cid),
         db.from('products').select('id', { count: 'exact' }).eq('company_id', cid).eq('is_active', true),
         db.from('inventory').select('*, products(sku, name, reorder_point)').eq('company_id', cid),
         db.from('exceptions').select('*').eq('company_id', cid).eq('status', 'open'),
         db.from('stock_movements').select('*').eq('company_id', cid).order('timestamp', { ascending: false }).limit(20),
-        db.from('manufacturer_manifests').select('*, manufacturer_manifest_items(*)').eq('company_id', cid),
-        db.from('orders').select('id, order_number, customer_name, order_date, status, woo_status').eq('company_id', cid).order('created_at', { ascending: false }).limit(5),
+        db.from('manufacturer_manifests').select('*, manufacturer_manifest_items(*)').eq('company_id', cid).in('status', ['pending', 'shipped', 'in_transit']).order('eta', { ascending: true }),
+        // Today's processing orders
+        db.from('orders').select('id, order_number, customer_name, order_date, status, woo_status, total_amount').eq('company_id', cid).eq('status', 'processing').gte('created_at', todayISO).order('created_at', { ascending: false }),
+        // Today's shipments
+        db.from('shipments').select('id').eq('company_id', cid).gte('created_at', todayISO),
+        // 10 oldest open exceptions with linked order info
+        db.from('exceptions').select('*, orders:linked_order_id(order_number, customer_name, order_date)').eq('company_id', cid).eq('status', 'open').order('created_at', { ascending: true }).limit(10),
       ]);
 
       const orderList = orders.data || [];
@@ -265,26 +274,33 @@ export function useDashboardStats() {
       const manifestList = (manifests.data || []) as ManifestWithItems[];
 
       const totalOnHand = inventoryList.reduce((s, i) => s + i.on_hand, 0);
-      const shipped = orderList.filter((o: any) => ['shipped', 'delivered'].includes(o.status)).length;
-      const awaiting = orderList.filter((o: any) => ['pending', 'processing'].includes(o.status)).length;
+      const shipped = orderList.filter((o: any) => ['shipped', 'delivered', 'completed'].includes(o.status)).length;
 
-      const alerts = inventoryList.filter(i => {
-        const threshold = i.products?.reorder_point || 0;
-        return i.on_hand <= threshold;
-      });
+      // Top 5 most urgent stock alerts (lowest on_hand relative to reorder_point)
+      const alerts = inventoryList
+        .filter(i => {
+          const threshold = i.products?.reorder_point || 0;
+          return i.on_hand <= threshold;
+        })
+        .sort((a, b) => {
+          const aRatio = a.on_hand / Math.max(a.products?.reorder_point || 1, 1);
+          const bRatio = b.on_hand / Math.max(b.products?.reorder_point || 1, 1);
+          return aRatio - bRatio;
+        })
+        .slice(0, 5);
 
       return {
         totalOrders: orderList.length,
         ordersShipped: shipped,
-        awaitingShipment: awaiting,
+        shipmentsToday: (todayShipments.data || []).length,
         exceptions: exceptionList.length,
         totalSKUs: products.count || 0,
         stockOnHand: totalOnHand,
         inventoryAlerts: alerts,
-        activeExceptions: exceptionList,
+        oldestExceptions: oldestExceptions.data || [],
         recentMovements: movementList,
         manifests: manifestList,
-        recentOrders: recentOrders.data || [],
+        todayProcessing: todayProcessing.data || [],
         allOrders: orderList,
         allShipments: shipmentList,
       };

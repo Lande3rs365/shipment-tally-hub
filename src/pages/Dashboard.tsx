@@ -7,12 +7,12 @@ import { useDashboardStats } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
 import {
   Package, Truck, Warehouse, AlertTriangle,
-  BarChart3, Ship, Clock, ArrowRight, Calendar,
+  BarChart3, Ship, Clock, ArrowRight,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { startOfWeek, startOfMonth, isAfter } from "date-fns";
+import { startOfWeek, startOfMonth, isAfter, format } from "date-fns";
 
 type Period = "week" | "month" | "all";
 
@@ -41,8 +41,6 @@ export default function Dashboard() {
     return isAfter(new Date(dateStr), periodStart);
   };
 
-  // We use recentOrders to compute period stats (they come from the full query)
-  // For real period filtering we need the full order list from stats
   const allOrders = stats?.allOrders || [];
   const allShipments = stats?.allShipments || [];
   const periodOrders = period === "all" ? allOrders : allOrders.filter((o: any) => filterByDate(o.order_date || o.created_at));
@@ -50,12 +48,12 @@ export default function Dashboard() {
 
   const totalOrders = periodOrders.length;
   const shipped = periodOrders.filter((o: any) => ['shipped', 'delivered', 'completed'].includes(o.status)).length;
-  const awaiting = periodOrders.filter((o: any) => ['pending', 'processing'].includes(o.status)).length;
+  const shipmentsToday = stats?.shipmentsToday || 0;
   const exceptionCount = stats?.exceptions || 0;
 
   const chartData = [
     { name: 'Shipped', value: shipped, color: 'hsl(var(--success))' },
-    { name: 'Awaiting', value: awaiting, color: 'hsl(var(--info))' },
+    { name: 'Processing', value: periodOrders.filter((o: any) => o.status === 'processing').length, color: 'hsl(var(--info))' },
     { name: 'Exceptions', value: exceptionCount, color: 'hsl(var(--destructive))' },
   ];
 
@@ -69,7 +67,6 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground">{currentCompany.name} · Distribution & Inventory Control Hub</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Period toggle */}
           <div className="flex bg-muted rounded-lg p-0.5">
             {(["week", "month", "all"] as Period[]).map(p => (
               <button
@@ -97,7 +94,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
         <KpiCard title={`Orders (${periodLabels[period]})`} value={totalOrders} icon={Package} variant="info" />
         <KpiCard title="Shipped" value={shipped} icon={Truck} variant="success" />
-        <KpiCard title="Awaiting Ship" value={awaiting} icon={Clock} variant="warning" />
+        <KpiCard title="Shipments Today" value={shipmentsToday} icon={Clock} variant="warning" />
         <KpiCard title="Exceptions" value={exceptionCount} icon={AlertTriangle} variant="danger" />
         <KpiCard title="Stock SKUs" value={stats?.totalSKUs || 0} icon={Warehouse} variant="default" />
       </div>
@@ -125,7 +122,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Stock Alerts */}
+        {/* Stock Alerts — Top 5 */}
         <div className="bg-card border border-border rounded-lg p-5">
           <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Warehouse className="w-4 h-4 text-warning" /> Stock Alerts
@@ -148,14 +145,18 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Recent Orders */}
+      {/* Today's Processing Orders */}
       <div className="bg-card border border-border rounded-lg p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold flex items-center gap-2"><Package className="w-4 h-4 text-primary" /> Recent Orders</h2>
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Package className="w-4 h-4 text-primary" />
+            Today's Orders
+            <span className="text-xs font-normal text-muted-foreground">({(stats?.todayProcessing || []).length} processing)</span>
+          </h2>
           <button onClick={() => navigate('/orders')} className="text-xs text-primary hover:underline flex items-center gap-1">View all <ArrowRight className="w-3 h-3" /></button>
         </div>
-        {(stats?.recentOrders || []).length === 0 ? (
-          <p className="text-xs text-muted-foreground">No orders yet</p>
+        {(stats?.todayProcessing || []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">No processing orders today</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -165,17 +166,17 @@ export default function Dashboard() {
                   <th className="text-left py-2 px-3">Customer</th>
                   <th className="text-left py-2 px-3">Date</th>
                   <th className="text-left py-2 px-3">Woo Status</th>
-                  <th className="text-left py-2 px-3">Status</th>
+                  <th className="text-right py-2 px-3">Total</th>
                 </tr>
               </thead>
               <tbody>
-                {stats!.recentOrders.map((o: any) => (
+                {stats!.todayProcessing.map((o: any) => (
                   <tr key={o.id} onClick={() => navigate(`/orders/${o.order_number}`)} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors">
                     <td className="py-2 px-3 font-mono text-primary font-medium">{o.order_number}</td>
                     <td className="py-2 px-3 text-foreground">{o.customer_name || '—'}</td>
-                    <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{o.order_date ? new Date(o.order_date).toLocaleDateString() : '—'}</td>
+                    <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{o.order_date ? format(new Date(o.order_date), 'dd MMM') : '—'}</td>
                     <td className="py-2 px-3"><StatusBadge status={o.woo_status || 'processing'} /></td>
-                    <td className="py-2 px-3"><StatusBadge status={o.status} /></td>
+                    <td className="py-2 px-3 font-mono text-xs text-right">{o.total_amount ? `$${Number(o.total_amount).toFixed(2)}` : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -184,14 +185,14 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Manufacturer Inbound */}
+      {/* Manufacturer Inbound — Next Expected */}
       <div className="bg-card border border-border rounded-lg p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold flex items-center gap-2"><Ship className="w-4 h-4 text-info" /> Manufacturer Inbound</h2>
           <button onClick={() => navigate('/supplier-manifests')} className="text-xs text-primary hover:underline flex items-center gap-1">View all <ArrowRight className="w-3 h-3" /></button>
         </div>
         {(stats?.manifests || []).length === 0 ? (
-          <p className="text-xs text-muted-foreground">No inbound manifests</p>
+          <p className="text-xs text-muted-foreground">No inbound manifests expected</p>
         ) : (
           <div className="space-y-2">
             {stats!.manifests.map((m: any) => (
@@ -201,6 +202,7 @@ export default function Dashboard() {
                   <p className="text-xs text-muted-foreground font-mono">{m.manifest_number || '—'}</p>
                 </div>
                 <div className="flex items-center gap-3">
+                  {m.eta && <span className="text-xs text-muted-foreground">ETA {format(new Date(m.eta), 'dd MMM')}</span>}
                   {m.tracking_number && <span className="text-xs font-mono text-muted-foreground">{m.tracking_number}</span>}
                   <StatusBadge status={m.status} />
                 </div>
@@ -210,28 +212,45 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Exceptions */}
+      {/* Active Exceptions — 10 Oldest */}
       <div className="bg-card border border-border rounded-lg p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-destructive" /> Active Exceptions</h2>
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            Active Exceptions — Top 10 Oldest
+            <span className="text-xs font-normal text-muted-foreground">({stats?.exceptions || 0} total open)</span>
+          </h2>
           <button onClick={() => navigate('/exceptions')} className="text-xs text-primary hover:underline flex items-center gap-1">View all <ArrowRight className="w-3 h-3" /></button>
         </div>
-        {(stats?.activeExceptions || []).length === 0 ? (
-          <p className="text-xs text-muted-foreground">No active exceptions</p>
+        {(stats?.oldestExceptions || []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">No active exceptions 🎉</p>
         ) : (
-          <div className="space-y-2">
-            {stats!.activeExceptions.map((exc: any) => (
-              <div key={exc.id} onClick={() => navigate('/exceptions')} className="flex items-center justify-between p-3 rounded-md bg-muted/50 border border-border cursor-pointer hover:bg-muted/70 transition-colors">
-                <div className="flex items-center gap-3">
-                  <StatusBadge status={exc.severity} />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{exc.title}</p>
-                    <p className="text-xs text-muted-foreground">{exc.exception_type.replace(/_/g, ' ')}</p>
-                  </div>
-                </div>
-                <span className="text-xs text-muted-foreground font-mono">{new Date(exc.created_at).toLocaleDateString()}</span>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
+                  <th className="text-left py-2 px-3">Order</th>
+                  <th className="text-left py-2 px-3">Customer</th>
+                  <th className="text-left py-2 px-3">Order Date</th>
+                  <th className="text-left py-2 px-3">Reason</th>
+                  <th className="text-left py-2 px-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats!.oldestExceptions.map((exc: any) => {
+                  const order = exc.orders;
+                  return (
+                    <tr key={exc.id} onClick={() => navigate('/exceptions')} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors">
+                      <td className="py-2 px-3 font-mono text-primary font-medium">{order?.order_number || '—'}</td>
+                      <td className="py-2 px-3 text-foreground">{order?.customer_name || '—'}</td>
+                      <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{order?.order_date ? format(new Date(order.order_date), 'dd MMM yyyy') : '—'}</td>
+                      <td className="py-2 px-3">{exc.reason ? <StatusBadge status={exc.reason} /> : <span className="text-xs text-muted-foreground">—</span>}</td>
+                      <td className="py-2 px-3"><StatusBadge status={exc.status} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
