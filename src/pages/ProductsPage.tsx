@@ -100,7 +100,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("shafts");
+  const [activeTab, setActiveTab] = useState("overview");
   const [editing, setEditing] = useState<EditingRow | null>(null);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [addDialogOpen, setAddDialogOpen] = useState(false);
