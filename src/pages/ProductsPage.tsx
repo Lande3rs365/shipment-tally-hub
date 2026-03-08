@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import skuFrameworkUrl from "@/assets/JFlowers_SKU_Framework_v5.xlsx?url";
 import { useProducts, useImportSkuFramework } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -179,6 +180,17 @@ export default function ProductsPage() {
       }
     };
     input.click();
+  };
+
+  const handleImportBundled = async () => {
+    try {
+      const resp = await fetch(skuFrameworkUrl);
+      const buffer = await resp.arrayBuffer();
+      const result = await importMutation.mutateAsync(buffer);
+      toast.success(`Imported ${result.created} products (${result.skipped} already existed).`);
+    } catch (err: any) {
+      toast.error("Import failed: " + (err.message || "Unknown error"));
+    }
   };
 
   const startEdit = (p: Product) => {
@@ -462,6 +474,16 @@ export default function ProductsPage() {
           <Upload className={cn("w-3.5 h-3.5", importMutation.isPending && "animate-spin")} />
           Import SKU Framework
         </button>
+        {products.length === 0 && (
+          <button
+            onClick={handleImportBundled}
+            disabled={importMutation.isPending}
+            className="px-3 py-2 rounded-md text-xs font-medium transition-colors border border-primary/50 bg-card text-primary hover:bg-primary/10 flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <Package className={cn("w-3.5 h-3.5", importMutation.isPending && "animate-spin")} />
+            Import v5 (Bundled)
+          </button>
+        )}
         {products.length > 0 && (
           <button
             onClick={handleDeleteAll}

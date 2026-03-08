@@ -1,0 +1,1 @@
+DELETE FROM products WHERE company_id = '9215d6c9-585d-4e87-a5b0-30209ef62c9a'
