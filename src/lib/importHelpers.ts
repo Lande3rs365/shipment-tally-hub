@@ -242,7 +242,7 @@ export async function importShipments(shipments: ParsedShipment[], companyId: st
       const s = shipments.find(sh => sh.order_number === on)!;
       return {
         company_id: companyId, order_number: on, order_date: s.order_date,
-        status: "processing", woo_status: "processing",
+        status: "pending", woo_status: "pending",
         customer_name: s.customer_name, customer_email: s.customer_email,
         total_amount: s.order_total, source: "pirate_ship",
       };
