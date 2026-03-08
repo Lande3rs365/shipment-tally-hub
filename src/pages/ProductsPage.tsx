@@ -9,6 +9,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import EmptyState from "@/components/EmptyState";
 import KpiCard from "@/components/KpiCard";
 import { Tag, Search, Upload, Plus, Save, X, Pencil, ChevronRight, ChevronDown, Package, Minus, Layers, Crosshair, Swords, Briefcase, Gem, Shirt, LayoutGrid, Trash2 } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,7 @@ type FilterKey = 'overview' | string;
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterKey>("overview");
+  const [channelFilter, setChannelFilter] = useState<"all" | "JF" | "DL">("all");
   const [editing, setEditing] = useState<EditingRow | null>(null);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -144,6 +146,11 @@ export default function ProductsPage() {
     } else {
       list = tab.categories.flatMap(c => productsByCategory[c] || []);
     }
+    // Channel filter for Playing Cues
+    if (tab.key === 'playing_cues' && channelFilter !== 'all') {
+      const prefix = channelFilter + '-';
+      list = list.filter(p => p.sku.startsWith(prefix));
+    }
     if (search) {
       const s = search.toLowerCase();
       list = list.filter(p =>
@@ -153,7 +160,7 @@ export default function ProductsPage() {
       );
     }
     return list;
-  }, [products, productsByCategory, search]);
+  }, [products, productsByCategory, search, channelFilter]);
 
   const toggleParent = (id: string) => {
     setExpandedParents(prev => {
@@ -521,6 +528,18 @@ export default function ProductsPage() {
           </button>
         )}
       </div>
+
+      {/* Channel filter for Playing Cues */}
+      {activeFilter === 'playing_cues' && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium">Channel:</span>
+          <ToggleGroup type="single" value={channelFilter} onValueChange={(v) => v && setChannelFilter(v as "all" | "JF" | "DL")} size="sm" variant="outline">
+            <ToggleGroupItem value="all" className="text-xs px-3">All</ToggleGroupItem>
+            <ToggleGroupItem value="JF" className="text-xs px-3">JF (B2C)</ToggleGroupItem>
+            <ToggleGroupItem value="DL" className="text-xs px-3">DL (Dealer)</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      )}
 
       {/* Content */}
       {isLoading ? (
