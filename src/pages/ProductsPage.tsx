@@ -529,6 +529,18 @@ export default function ProductsPage() {
         )}
       </div>
 
+      {/* Channel filter for Playing Cues */}
+      {activeFilter === 'playing_cues' && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground font-medium">Channel:</span>
+          <ToggleGroup type="single" value={channelFilter} onValueChange={(v) => v && setChannelFilter(v as "all" | "JF" | "DL")} size="sm" variant="outline">
+            <ToggleGroupItem value="all" className="text-xs px-3">All</ToggleGroupItem>
+            <ToggleGroupItem value="JF" className="text-xs px-3">JF (B2C)</ToggleGroupItem>
+            <ToggleGroupItem value="DL" className="text-xs px-3">DL (Dealer)</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
+      )}
+
       {/* Content */}
       {isLoading ? (
         <LoadingSpinner message="Loading products..." />
