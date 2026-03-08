@@ -279,7 +279,7 @@ export function useImportSkuFramework() {
       // Pass 2: Insert variants with parent_product_id
       const newVariants = variants.filter(v => !existingMap.has(v.sku));
       skipped += variants.length - newVariants.length;
-      const knownSkus = new Set(existingMap.keys());
+      const knownSkus = new Set<string>(existingMap.keys() as Iterable<string>);
       for (let i = 0; i < newVariants.length; i += BATCH) {
         const batch = newVariants.slice(i, i + BATCH).map(v => {
           const parentSku = resolveParentSku(v.sku, knownSkus);
