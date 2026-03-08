@@ -422,30 +422,24 @@ export default function ProductsPage() {
 
       {/* KPI row — clickable cards navigate to category tabs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <button onClick={() => setActiveFilter('all')} className="text-left">
-          <KpiCard title="All SKUs" value={counts.total} icon={LayoutGrid} variant={activeFilter === 'all' ? 'info' : 'info'} />
-        </button>
-        <button onClick={() => setActiveFilter('shafts')} className="text-left">
-          <KpiCard title="Shafts" value={counts.shafts} icon={Crosshair} variant="warning" />
-        </button>
-        <button onClick={() => setActiveFilter('playing_cues')} className="text-left">
-          <KpiCard title="Playing Cues" value={counts.playingCues} icon={Swords} variant="success" />
-        </button>
-        <button onClick={() => setActiveFilter('break_jump')} className="text-left">
-          <KpiCard title="Break & Jump" value={counts.breakJump} icon={Layers} variant="danger" />
-        </button>
-        <button onClick={() => setActiveFilter('cases')} className="text-left">
-          <KpiCard title="Cases" value={counts.cases} icon={Briefcase} variant="default" />
-        </button>
-        <button onClick={() => setActiveFilter('accessories')} className="text-left">
-          <KpiCard title="Accessories" value={counts.accessories} icon={Gem} variant="info" />
-        </button>
-        <button onClick={() => setActiveFilter('apparel')} className="text-left">
-          <KpiCard title="Apparel" value={counts.apparel} icon={Shirt} variant="warning" />
-        </button>
-        <button onClick={() => setActiveFilter('overview')} className="text-left">
-          <KpiCard title="Categories" value={Object.keys(productsByCategory).length} icon={Tag} variant="success" />
-        </button>
+        {[
+          { key: 'all', title: 'All SKUs', value: counts.total, icon: LayoutGrid, variant: 'info' as const },
+          { key: 'shafts', title: 'Shafts', value: counts.shafts, icon: Crosshair, variant: 'warning' as const },
+          { key: 'playing_cues', title: 'Playing Cues', value: counts.playingCues, icon: Swords, variant: 'success' as const },
+          { key: 'break_jump', title: 'Break & Jump', value: counts.breakJump, icon: Layers, variant: 'danger' as const },
+          { key: 'cases', title: 'Cases', value: counts.cases, icon: Briefcase, variant: 'default' as const },
+          { key: 'accessories', title: 'Accessories', value: counts.accessories, icon: Gem, variant: 'info' as const },
+          { key: 'apparel', title: 'Apparel', value: counts.apparel, icon: Shirt, variant: 'warning' as const },
+          { key: 'overview', title: 'Categories', value: Object.keys(productsByCategory).length, icon: Tag, variant: 'success' as const },
+        ].map(card => (
+          <button
+            key={card.key}
+            onClick={() => setActiveFilter(card.key)}
+            className={cn("text-left rounded-lg transition-all", activeFilter === card.key && "ring-2 ring-primary ring-offset-2 ring-offset-background")}
+          >
+            <KpiCard title={card.title} value={card.value} icon={card.icon} variant={card.variant} />
+          </button>
+        ))}
       </div>
 
       {/* Search + Import on one line */}
@@ -468,6 +462,15 @@ export default function ProductsPage() {
           <Upload className={cn("w-3.5 h-3.5", importMutation.isPending && "animate-spin")} />
           Import SKU Framework
         </button>
+        {products.length > 0 && (
+          <button
+            onClick={handleDeleteAll}
+            className="px-3 py-2 rounded-md text-xs font-medium transition-colors border border-destructive/50 bg-card text-destructive hover:bg-destructive/10 flex items-center gap-1.5 whitespace-nowrap"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete All
+          </button>
+        )}
         {activeFilter !== 'overview' && activeFilter !== 'all' && (
           <button
             onClick={() => setAddDialogOpen(true)}
