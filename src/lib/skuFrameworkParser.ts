@@ -265,19 +265,22 @@ export function parseSkuFrameworkXlsx(data: ArrayBuffer): ParsedSkuProduct[] {
 }
 
 /**
- * Resolve parent SKU for variants by removing the last segment.
- * v12 examples:
- *   JF-PC-ASP-2001-NW → JF-PC-ASP-2001
- *   SH-CL-RAD-125 → SH-CL
- *   APP-MJ-PATRIOT-USA-XL → APP-MJ-PATRIOT-USA
- *   BK-BRK-BRKR-RED-NW → BK-BRK-BRKR
- *   CS-SC-BFLY-TAN → CS-SC-BFLY
- *   ACC-EXT-3IN → ACC-EXT
+ * Resolve parent SKU for a variant by walking up the segment tree.
+ * Tries removing segments from the end until finding a match in the known SKU set.
+ * e.g. SH-CL-RAD-118 → tries SH-CL-RAD (miss) → SH-CL (hit!)
+ * If no knownSkus provided, falls back to removing the last segment.
  */
-export function resolveParentSku(variantSku: string): string | null {
+export function resolveParentSku(variantSku: string, knownSkus?: Set<string>): string | null {
   const segments = variantSku.split('-');
-  if (segments.length >= 3) {
-    return segments.slice(0, -1).join('-');
+  if (segments.length < 3) return null;
+
+  if (knownSkus) {
+    for (let len = segments.length - 1; len >= 2; len--) {
+      const candidate = segments.slice(0, len).join('-');
+      if (knownSkus.has(candidate)) return candidate;
+    }
+    return null;
   }
-  return null;
+
+  return segments.slice(0, -1).join('-');
 }
