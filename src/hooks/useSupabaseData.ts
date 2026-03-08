@@ -186,10 +186,10 @@ export function useManufacturerManifests() {
 
 // ── Exceptions ──
 export function useExceptions() {
-  return useCompanyQuery<Exception[]>("exceptions", async (companyId) => {
+  return useCompanyQuery<(Exception & { orders: Pick<Order, 'order_number' | 'customer_name'> | null })[]>("exceptions", async (companyId) => {
     const { data, error } = await db
       .from('exceptions')
-      .select('*')
+      .select('*, orders:linked_order_id(order_number, customer_name)')
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
     if (error) throw error;
