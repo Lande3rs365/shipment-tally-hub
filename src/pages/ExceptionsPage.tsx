@@ -85,19 +85,19 @@ export default function ExceptionsPage() {
       <TableRow key={exc.id}>
         {/* Order — clickable number + customer name below */}
         <TableCell className="py-3">
-          <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2 min-w-0">
             {orderNumber ? (
               <Link
                 to={`/orders/${orderNumber}`}
-                className={cn("font-mono text-sm font-bold hover:underline", getOrderNumberColor(wooStatus))}
+                className={cn("font-mono text-sm font-bold hover:underline shrink-0", getOrderNumberColor(wooStatus))}
               >
                 {orderNumber}
               </Link>
             ) : (
-              <span className="font-mono text-sm font-bold text-foreground">{exc.title}</span>
+              <span className="font-mono text-sm font-bold text-foreground shrink-0">{exc.title}</span>
             )}
             {exc.orders?.customer_name && (
-              <span className="text-xs text-muted-foreground">{exc.orders.customer_name}</span>
+              <span className="text-sm text-muted-foreground truncate">{exc.orders.customer_name}</span>
             )}
           </div>
         </TableCell>
