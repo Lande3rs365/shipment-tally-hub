@@ -189,10 +189,8 @@ export default function ExceptionsPage() {
             {/* Reason pill / setter */}
             {reasonMeta ? (
               <Select onValueChange={(val) => handleReasonChange(exc.id, val)}>
-                <SelectTrigger className="h-7 w-auto border-0 p-0 shadow-none focus:ring-0">
-                  <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full cursor-pointer", reasonMeta.color)}>
-                    {reasonMeta.label}
-                  </span>
+                <SelectTrigger className="h-7 w-[120px] text-xs">
+                  <SelectValue placeholder={reasonMeta.label} />
                 </SelectTrigger>
                 <SelectContent>
                   {REASON_OPTIONS.map(r => (
@@ -202,9 +200,8 @@ export default function ExceptionsPage() {
               </Select>
             ) : (
               <Select onValueChange={(val) => handleReasonChange(exc.id, val)}>
-                <SelectTrigger className="h-7 w-[110px] text-xs border-dashed text-muted-foreground">
-                  <Tag className="w-3 h-3 mr-1 shrink-0" />
-                  <SelectValue placeholder="Set reason" />
+                <SelectTrigger className="h-7 w-[120px] text-xs">
+                  <SelectValue placeholder="Reason" />
                 </SelectTrigger>
                 <SelectContent>
                   {REASON_OPTIONS.map(r => (
