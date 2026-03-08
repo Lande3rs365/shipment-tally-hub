@@ -9,17 +9,20 @@ import EmptyState from "@/components/EmptyState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import {
-  RotateCcw, Search as SearchIcon, ArrowRight, CheckCircle2, XCircle,
+  RotateCcw, Search as SearchIcon, ArrowRight, CheckCircle2,
   ArrowLeftRight, ShieldCheck, PackageX, PackageSearch, AlertTriangle, HelpCircle, Plus,
+  Truck, Globe,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 // ── Return reason categories ──
-type ReturnReason = 'exchanged' | 'warranty_replacement' | 'damaged_on_arrival' | 'missing_item' | 'incorrect_item' | 'other';
+type ReturnReason = 'exchanged' | 'warranty_replacement' | 'damaged_on_arrival' | 'missing_item' | 'incorrect_item' | 'shipping' | 'customs' | 'other';
 
 const reasonConfig: Record<ReturnReason, {
   label: string;
@@ -63,6 +66,20 @@ const reasonConfig: Record<ReturnReason, {
     outcome: 'Send correct item',
     colorClass: 'border-l-[hsl(var(--warning))]',
   },
+  shipping: {
+    label: 'Shipping',
+    icon: <Truck className="w-5 h-5" />,
+    description: 'Lost or damaged in transit',
+    outcome: 'Carrier claim / reship',
+    colorClass: 'border-l-[hsl(var(--info))]',
+  },
+  customs: {
+    label: 'Customs',
+    icon: <Globe className="w-5 h-5" />,
+    description: 'Held or returned by customs',
+    outcome: 'Reship or refund',
+    colorClass: 'border-l-[hsl(var(--warning))]',
+  },
   other: {
     label: 'Other',
     icon: <HelpCircle className="w-5 h-5" />,
@@ -79,11 +96,13 @@ const reasonToStockOutcome: Record<ReturnReason, string> = {
   damaged_on_arrival: 'quarantine',
   missing_item: 'restock',
   incorrect_item: 'restock',
+  shipping: 'quarantine',
+  customs: 'quarantine',
   other: 'quarantine',
 };
 
 export default function ReturnsPage() {
-  const [tab, setTab] = useState<'list' | 'new'>('list');
+  const [showNewReturn, setShowNewReturn] = useState(false);
   const [step, setStep] = useState<'form' | 'confirm' | 'done'>('form');
   const [orderNumber, setOrderNumber] = useState('');
   const [selectedItemId, setSelectedItemId] = useState('');
@@ -105,7 +124,19 @@ export default function ReturnsPage() {
 
   const canProceed = matchedOrder && selectedItemId && reason && quantity > 0;
 
-  const handleSubmit = () => { if (canProceed) setStep('confirm'); };
+  const handleReset = () => {
+    setStep('form');
+    setOrderNumber('');
+    setSelectedItemId('');
+    setQuantity(1);
+    setReason(null);
+    setNotes('');
+  };
+
+  const handleOpenNew = () => {
+    handleReset();
+    setShowNewReturn(true);
+  };
 
   const handleConfirm = async () => {
     if (!reason || !matchedOrder || !matchedItem || !currentCompany) return;
@@ -132,7 +163,6 @@ export default function ReturnsPage() {
 
       if (retErr) throw retErr;
 
-      // Stock movement
       if (matchedItem.product_id && stockOutcome !== 'return_to_customer') {
         const direction = stockOutcome === 'write_off' ? 'OUT' : 'IN';
         const movementType = stockOutcome === 'restock' ? 'return_restock'
@@ -154,7 +184,6 @@ export default function ReturnsPage() {
           performed_by: user?.id || null,
         });
 
-        // Update inventory
         if (primaryLocation) {
           const { data: existing } = await (supabase as any)
             .from('inventory')
@@ -190,15 +219,6 @@ export default function ReturnsPage() {
     }
   };
 
-  const handleReset = () => {
-    setStep('form');
-    setOrderNumber('');
-    setSelectedItemId('');
-    setQuantity(1);
-    setReason(null);
-    setNotes('');
-  };
-
   if (!currentCompany) return <EmptyState icon={RotateCcw} title="No company selected" />;
 
   return (
@@ -208,120 +228,67 @@ export default function ReturnsPage() {
           <h1 className="text-2xl font-bold">Returns</h1>
           <p className="text-sm text-muted-foreground">Manage returns, exchanges, and warranty claims</p>
         </div>
-        <Button onClick={() => { setTab('new'); handleReset(); }} size="sm">
+        <Button onClick={handleOpenNew} size="sm">
           <Plus className="w-4 h-4 mr-1" /> New Return
         </Button>
       </div>
 
-      <Tabs value={tab} onValueChange={v => setTab(v as 'list' | 'new')}>
-        <TabsList>
-          <TabsTrigger value="list">All Returns</TabsTrigger>
-          <TabsTrigger value="new">Log Return</TabsTrigger>
-        </TabsList>
+      {/* Returns Table */}
+      <ReturnsTable returns={returns} isLoading={isLoading} />
 
-        {/* ── Returns List ── */}
-        <TabsContent value="list">
-          <ReturnsList returns={returns} isLoading={isLoading} />
-        </TabsContent>
+      {/* New Return Dialog */}
+      <Dialog open={showNewReturn} onOpenChange={setShowNewReturn}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4 text-primary" />
+              {step === 'form' ? 'Log Return' : step === 'confirm' ? 'Confirm Return' : 'Return Processed'}
+            </DialogTitle>
+          </DialogHeader>
 
-        {/* ── New Return Form ── */}
-        <TabsContent value="new">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <RotateCcw className="w-4 h-4 text-primary" />
-                    {step === 'form' ? 'Log Return' : step === 'confirm' ? 'Confirm Return' : 'Return Processed'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {step === 'form' && (
-                    <ReturnForm
-                      orderNumber={orderNumber}
-                      setOrderNumber={setOrderNumber}
-                      matchedOrder={matchedOrder}
-                      selectedItemId={selectedItemId}
-                      setSelectedItemId={setSelectedItemId}
-                      quantity={quantity}
-                      setQuantity={setQuantity}
-                      matchedItem={matchedItem}
-                      reason={reason}
-                      setReason={setReason}
-                      notes={notes}
-                      setNotes={setNotes}
-                      canProceed={!!canProceed}
-                      onSubmit={handleSubmit}
-                    />
-                  )}
-                  {step === 'confirm' && reason && matchedOrder && matchedItem && (
-                    <ConfirmStep
-                      matchedOrder={matchedOrder}
-                      matchedItem={matchedItem}
-                      quantity={quantity}
-                      reason={reason}
-                      stockOutcome={reasonToStockOutcome[reason]}
-                      onBack={() => setStep('form')}
-                      onConfirm={handleConfirm}
-                    />
-                  )}
-                  {step === 'done' && (
-                    <DoneStep onReset={handleReset} />
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Sidebar: product info */}
-            <div className="space-y-4">
-              {matchedProduct && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Product Info</CardTitle>
-                    <p className="font-mono text-xs text-muted-foreground">{matchedProduct.sku}</p>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Name</span>
-                      <span className="text-foreground">{matchedProduct.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Unit Cost</span>
-                      <span className="font-mono text-foreground">{matchedProduct.unit_cost != null ? `$${matchedProduct.unit_cost}` : '—'}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Reason legend card */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Return Categories</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {(Object.entries(reasonConfig) as [ReturnReason, typeof reasonConfig[ReturnReason]][]).map(([key, cfg]) => (
-                    <div key={key} className="flex items-start gap-2 text-xs">
-                      <div className="text-muted-foreground mt-0.5">{cfg.icon}</div>
-                      <div>
-                        <p className="font-medium text-foreground">{cfg.label}</p>
-                        <p className="text-muted-foreground">{cfg.outcome}</p>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
+          {step === 'form' && (
+            <ReturnForm
+              orderNumber={orderNumber}
+              setOrderNumber={setOrderNumber}
+              matchedOrder={matchedOrder}
+              selectedItemId={selectedItemId}
+              setSelectedItemId={setSelectedItemId}
+              quantity={quantity}
+              setQuantity={setQuantity}
+              matchedItem={matchedItem}
+              matchedProduct={matchedProduct}
+              reason={reason}
+              setReason={setReason}
+              notes={notes}
+              setNotes={setNotes}
+              canProceed={!!canProceed}
+              onSubmit={() => { if (canProceed) setStep('confirm'); }}
+            />
+          )}
+          {step === 'confirm' && reason && matchedOrder && matchedItem && (
+            <ConfirmStep
+              matchedOrder={matchedOrder}
+              matchedItem={matchedItem}
+              quantity={quantity}
+              reason={reason}
+              stockOutcome={reasonToStockOutcome[reason]}
+              onBack={() => setStep('form')}
+              onConfirm={handleConfirm}
+            />
+          )}
+          {step === 'done' && (
+            <DoneStep onReset={handleReset} onClose={() => setShowNewReturn(false)} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-// ── Returns List Component ──
-const ReturnsList = ({ returns, isLoading }: { returns: any[]; isLoading: boolean }) => {
+// ── Returns Table ──
+const ReturnsTable = ({ returns, isLoading }: { returns: any[]; isLoading: boolean }) => {
   if (isLoading) return <div className="py-12 text-center text-muted-foreground">Loading…</div>;
-  if (returns.length === 0) return <EmptyState icon={RotateCcw} title="No returns yet" description="Process your first return using the Log Return tab" />;
+  if (returns.length === 0) return <EmptyState icon={RotateCcw} title="No returns yet" description="Process your first return using the New Return button" />;
 
   return (
     <Card>
@@ -330,30 +297,26 @@ const ReturnsList = ({ returns, isLoading }: { returns: any[]; isLoading: boolea
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Return #</th>
                 <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Order</th>
+                <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Name</th>
+                <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Returned Date</th>
                 <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Reason</th>
-                <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">SKU</th>
-                <th className="text-right py-2.5 px-3 font-medium text-muted-foreground">Qty</th>
-                <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Outcome</th>
-                <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Status</th>
-                <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Date</th>
+                <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Action</th>
               </tr>
             </thead>
             <tbody>
               {returns.map((r: any) => (
                 <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                  <td className="py-2 px-3 font-mono text-xs text-primary">{r.return_number || '—'}</td>
-                  <td className="py-2 px-3 font-mono text-xs">{r.orders?.order_number || '—'}</td>
+                  <td className="py-2 px-3 font-mono text-xs text-primary">{r.orders?.order_number || '—'}</td>
+                  <td className="py-2 px-3 text-sm text-foreground">{r.orders?.customer_name || '—'}</td>
+                  <td className="py-2 px-3 text-xs text-muted-foreground">
+                    {r.received_date ? format(new Date(r.received_date), 'dd MMM yyyy') : '—'}
+                  </td>
                   <td className="py-2 px-3">
                     <Badge variant="outline" className="text-xs font-normal">{r.reason || '—'}</Badge>
                   </td>
-                  <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{r.sku || '—'}</td>
-                  <td className="py-2 px-3 text-right font-mono text-xs">{r.return_qty ?? '—'}</td>
-                  <td className="py-2 px-3 text-xs capitalize text-muted-foreground">{r.stock_outcome?.replace(/_/g, ' ') || '—'}</td>
-                  <td className="py-2 px-3"><StatusBadge status={r.status} /></td>
-                  <td className="py-2 px-3 text-xs text-muted-foreground">
-                    {r.received_date ? format(new Date(r.received_date), 'dd MMM yyyy') : '—'}
+                  <td className="py-2 px-3">
+                    <StatusBadge status={r.stock_outcome?.replace(/_/g, ' ') || r.status} />
                   </td>
                 </tr>
               ))}
@@ -365,10 +328,10 @@ const ReturnsList = ({ returns, isLoading }: { returns: any[]; isLoading: boolea
   );
 };
 
-// ── Return Form Component ──
+// ── Return Form ──
 const ReturnForm = ({
   orderNumber, setOrderNumber, matchedOrder, selectedItemId, setSelectedItemId,
-  quantity, setQuantity, matchedItem, reason, setReason, notes, setNotes,
+  quantity, setQuantity, matchedItem, matchedProduct, reason, setReason, notes, setNotes,
   canProceed, onSubmit,
 }: any) => (
   <div className="space-y-5">
@@ -418,6 +381,13 @@ const ReturnForm = ({
       </div>
     )}
 
+    {/* Product info inline */}
+    {matchedProduct && (
+      <div className="text-xs text-muted-foreground bg-muted/30 rounded-md px-3 py-2">
+        {matchedProduct.name} · {matchedProduct.sku} {matchedProduct.unit_cost != null && `· $${matchedProduct.unit_cost}`}
+      </div>
+    )}
+
     {/* Return Quantity */}
     {selectedItemId && (
       <div className="space-y-1.5">
@@ -434,14 +404,14 @@ const ReturnForm = ({
     {selectedItemId && (
       <div className="space-y-2">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reason</label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {(Object.entries(reasonConfig) as [ReturnReason, typeof reasonConfig[ReturnReason]][]).map(
             ([key, cfg]) => (
               <button
                 key={key}
                 onClick={() => setReason(key)}
                 className={cn(
-                  "flex items-start gap-3 p-4 rounded-lg border-l-4 border text-left transition-all",
+                  "flex items-start gap-3 p-3 rounded-lg border-l-4 border text-left transition-all",
                   cfg.colorClass,
                   reason === key
                     ? "border-primary bg-primary/5 ring-1 ring-primary/30"
@@ -454,7 +424,6 @@ const ReturnForm = ({
                 <div className="space-y-0.5">
                   <div className="text-sm font-medium text-foreground">{cfg.label}</div>
                   <div className="text-xs text-muted-foreground">{cfg.description}</div>
-                  <div className="text-[10px] text-muted-foreground/70 italic">{cfg.outcome}</div>
                 </div>
               </button>
             )
@@ -514,7 +483,7 @@ const ConfirmStep = ({ matchedOrder, matchedItem, quantity, reason, stockOutcome
             </div>
           </div>
           <div>
-            <span className="text-muted-foreground">Stock Outcome</span>
+            <span className="text-muted-foreground">Action</span>
             <p className="text-foreground capitalize">{stockOutcome.replace(/_/g, ' ')}</p>
           </div>
         </div>
@@ -522,7 +491,7 @@ const ConfirmStep = ({ matchedOrder, matchedItem, quantity, reason, stockOutcome
       <div className="flex gap-3">
         <Button variant="outline" onClick={onBack}>Back</Button>
         <Button onClick={onConfirm}>
-          <CheckCircle2 className="w-4 h-4" /> Confirm & Process Return
+          <CheckCircle2 className="w-4 h-4" /> Confirm & Process
         </Button>
       </div>
     </div>
@@ -530,7 +499,7 @@ const ConfirmStep = ({ matchedOrder, matchedItem, quantity, reason, stockOutcome
 };
 
 // ── Done Step ──
-const DoneStep = ({ onReset }: { onReset: () => void }) => (
+const DoneStep = ({ onReset, onClose }: { onReset: () => void; onClose: () => void }) => (
   <div className="text-center py-8 space-y-4">
     <div className="w-14 h-14 rounded-full bg-[hsl(var(--success)/0.15)] flex items-center justify-center mx-auto">
       <CheckCircle2 className="w-7 h-7 text-success" />
@@ -541,8 +510,11 @@ const DoneStep = ({ onReset }: { onReset: () => void }) => (
         Return recorded and stock movement created. Inventory has been updated.
       </p>
     </div>
-    <Button onClick={onReset} variant="outline">
-      <RotateCcw className="w-4 h-4" /> Process Another Return
-    </Button>
+    <div className="flex gap-3 justify-center">
+      <Button onClick={onReset} variant="outline">
+        <RotateCcw className="w-4 h-4" /> Another Return
+      </Button>
+      <Button onClick={onClose}>Done</Button>
+    </div>
   </div>
 );
