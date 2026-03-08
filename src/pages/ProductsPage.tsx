@@ -413,66 +413,63 @@ export default function ProductsPage() {
         <p className="text-sm text-muted-foreground">{products.length} products · SKU framework & catalogue management</p>
       </div>
 
-      {/* KPI row */}
+      {/* KPI row — clickable cards navigate to category tabs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard title="All SKUs" value={counts.total} icon={LayoutGrid} variant="info" />
-        <KpiCard title="Shafts" value={counts.shafts} icon={Crosshair} variant="warning" />
-        <KpiCard title="Playing Cues" value={counts.playingCues} icon={Swords} variant="success" />
-        <KpiCard title="Break & Jump" value={counts.breakJump} icon={Layers} variant="danger" />
-        <KpiCard title="Cases" value={counts.cases} icon={Briefcase} variant="default" />
-        <KpiCard title="Accessories" value={counts.accessories} icon={Gem} variant="info" />
-        <KpiCard title="Apparel" value={counts.apparel} icon={Shirt} variant="warning" />
-        <KpiCard title="Categories" value={Object.keys(productsByCategory).length} icon={Tag} variant="success" />
+        <button onClick={() => setActiveFilter('all')} className="text-left">
+          <KpiCard title="All SKUs" value={counts.total} icon={LayoutGrid} variant={activeFilter === 'all' ? 'info' : 'info'} />
+        </button>
+        <button onClick={() => setActiveFilter('shafts')} className="text-left">
+          <KpiCard title="Shafts" value={counts.shafts} icon={Crosshair} variant="warning" />
+        </button>
+        <button onClick={() => setActiveFilter('playing_cues')} className="text-left">
+          <KpiCard title="Playing Cues" value={counts.playingCues} icon={Swords} variant="success" />
+        </button>
+        <button onClick={() => setActiveFilter('break_jump')} className="text-left">
+          <KpiCard title="Break & Jump" value={counts.breakJump} icon={Layers} variant="danger" />
+        </button>
+        <button onClick={() => setActiveFilter('cases')} className="text-left">
+          <KpiCard title="Cases" value={counts.cases} icon={Briefcase} variant="default" />
+        </button>
+        <button onClick={() => setActiveFilter('accessories')} className="text-left">
+          <KpiCard title="Accessories" value={counts.accessories} icon={Gem} variant="info" />
+        </button>
+        <button onClick={() => setActiveFilter('apparel')} className="text-left">
+          <KpiCard title="Apparel" value={counts.apparel} icon={Shirt} variant="warning" />
+        </button>
+        <button onClick={() => setActiveFilter('overview')} className="text-left">
+          <KpiCard title="Categories" value={Object.keys(productsByCategory).length} icon={Tag} variant="success" />
+        </button>
       </div>
 
-      {/* Filter chips + action buttons */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          {filterChips.map(f => (
-            <button
-              key={f.key}
-              onClick={() => setActiveFilter(f.key)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
-                activeFilter === f.key
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-card text-muted-foreground border-border hover:bg-muted'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+      {/* Search + Import on one line */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search by SKU, name, or details…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
         </div>
-        <div className="flex items-center gap-2">
+        <button
+          onClick={handleImport}
+          disabled={importMutation.isPending}
+          className="px-3 py-2 rounded-md text-xs font-medium transition-colors border border-border bg-card text-muted-foreground hover:bg-muted flex items-center gap-1.5 whitespace-nowrap"
+        >
+          <Upload className={cn("w-3.5 h-3.5", importMutation.isPending && "animate-spin")} />
+          Import SKU Framework
+        </button>
+        {activeFilter !== 'overview' && activeFilter !== 'all' && (
           <button
-            onClick={handleImport}
-            disabled={importMutation.isPending}
-            className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors border border-border bg-card text-muted-foreground hover:bg-muted flex items-center gap-1.5"
+            onClick={() => setAddDialogOpen(true)}
+            className="px-3 py-2 rounded-md text-xs font-medium transition-colors border border-primary bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 whitespace-nowrap"
           >
-            <Upload className={cn("w-3.5 h-3.5", importMutation.isPending && "animate-spin")} />
-            Import SKU Framework
+            <Plus className="w-3.5 h-3.5" />
+            Add Product
           </button>
-          {activeFilter !== 'overview' && activeFilter !== 'all' && (
-            <button
-              onClick={() => setAddDialogOpen(true)}
-              className="px-3 py-1.5 rounded-md text-xs font-medium transition-colors border border-primary bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Product
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search by SKU, name, or details…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        />
+        )}
       </div>
 
       {/* Content */}
