@@ -425,7 +425,7 @@ const ReturnsTable = ({ returns, isLoading }: { returns: any[]; isLoading: boole
                     {r.return_qty ?? '—'}
                   </td>
                   <td className="py-2 px-3">
-                    <StatusBadge status={r.stock_outcome?.replace(/_/g, ' ') || r.status} />
+                    <StatusBadge status={r.status?.replace(/_/g, ' ') || '—'} />
                   </td>
                 </tr>
               ))}
