@@ -9,25 +9,10 @@ import { AlertTriangle, CheckCircle, Phone, Eye } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const db = supabase as any;
-
-const STATUS_OPTIONS = [
-  { value: "processing", label: "Processing" },
-  { value: "on-hold", label: "On Hold" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "refunded", label: "Refunded" },
-];
 
 const REASON_OPTIONS = [
   { value: "oos", label: "OOS", color: "bg-destructive/15 text-destructive" },
@@ -59,24 +44,23 @@ const formatDate = (d: string | null) => {
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 };
 
-const getDaysOnHold = (createdAt: string): number => {
-  const created = new Date(createdAt);
-  const now = new Date();
-  return Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+const getStatusPill = (exc: { exception_type: string; status: string }) => {
+  if (exc.exception_type === "on_hold") {
+    return <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-600 whitespace-nowrap">On Hold</span>;
+  }
+  if (exc.status === "open") {
+    return <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-600 whitespace-nowrap">Active</span>;
+  }
+  return <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-muted text-muted-foreground whitespace-nowrap">{exc.status}</span>;
 };
 
-const getDaysColor = (days: number): string => {
-  if (days >= 60) return "text-destructive";
-  if (days >= 30) return "text-orange-500";
-  if (days >= 14) return "text-amber-500";
-  return "text-muted-foreground";
-};
+// 5 columns: Order 340px | Order Date 150px | Contacted 150px | Reason 200px | Status 140px
+const GRID = "grid grid-cols-[340px_150px_150px_200px_140px] items-center";
 
 export default function ExceptionsPage() {
   const { currentCompany } = useCompany();
   const { data: exceptions = [], isLoading } = useExceptions();
   const queryClient = useQueryClient();
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const active = useMemo(() =>
     exceptions.filter(e => e.status !== 'resolved' && e.status !== 'dismissed'),
@@ -87,7 +71,6 @@ export default function ExceptionsPage() {
     [exceptions]
   );
 
-  // Sort: oldest order date first, then contacted date, then reason/status
   const sortedActive = useMemo(() => {
     const onHold = active.filter(e => e.exception_type === 'on_hold');
     const other = active.filter(e => e.exception_type !== 'on_hold');
@@ -105,48 +88,7 @@ export default function ExceptionsPage() {
     return { onHold: [...onHold].sort(sortFn), other: [...other].sort(sortFn) };
   }, [active]);
 
-  const handleStatusChange = async (exc: typeof exceptions[0], newWooStatus: string) => {
-    setUpdatingId(exc.id);
-    try {
-      if (exc.linked_order_id) {
-        const { error: orderErr } = await db
-          .from('orders')
-          .update({ woo_status: newWooStatus })
-          .eq('id', exc.linked_order_id);
-        if (orderErr) throw orderErr;
-      }
-      if (newWooStatus !== 'on-hold') {
-        const { error } = await db
-          .from('exceptions')
-          .update({ status: 'resolved', resolved_at: new Date().toISOString(), resolution_notes: `Status changed to ${newWooStatus}` })
-          .eq('id', exc.id);
-        if (error) throw error;
-      }
-      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      toast({ title: `Status → ${newWooStatus}` });
-    } catch (err: any) {
-      console.error('Failed to update status:', err);
-      toast({ title: 'Failed to update', description: err.message, variant: 'destructive' });
-    }
-    setUpdatingId(null);
-  };
-
-  const handleReasonChange = async (excId: string, reason: string) => {
-    try {
-      const { error } = await db.from('exceptions').update({ reason }).eq('id', excId);
-      if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
-      const label = REASON_OPTIONS.find(r => r.value === reason)?.label || reason;
-      toast({ title: `Reason set: ${label}` });
-    } catch (err: any) {
-      toast({ title: 'Failed to set reason', description: err.message, variant: 'destructive' });
-    }
-  };
-
   if (!currentCompany) return <EmptyState icon={AlertTriangle} title="No company selected" />;
-
-  const GRID = "grid grid-cols-[minmax(200px,1.5fr)_80px_100px_100px_140px_100px_80px] items-center gap-3";
 
   const renderRow = (exc: typeof exceptions[0]) => {
     const orderNumber = exc.orders?.order_number;
@@ -154,93 +96,59 @@ export default function ExceptionsPage() {
     const reasonMeta = getReasonMeta(exc.reason);
     const orderDate = exc.orders?.order_date;
     const contactedDate = exc.created_at;
-    const days = getDaysOnHold(exc.created_at);
-    const isOnHold = exc.exception_type === 'on_hold';
 
     return (
-      <div
-        key={exc.id}
-        className={cn("bg-card border border-border rounded-lg px-4 py-3", GRID)}
-      >
-        {/* Order + Customer */}
-        <div className="flex items-center gap-2 min-w-0">
-          {orderNumber ? (
-            <Link
-              to={`/orders/${orderNumber}`}
-              className={cn("font-mono text-sm font-semibold hover:underline shrink-0", getOrderNumberColor(wooStatus))}
-            >
-              {orderNumber}
-            </Link>
-          ) : (
-            <span className="font-mono text-sm font-semibold text-foreground shrink-0">{exc.title}</span>
-          )}
+      <div key={exc.id} className={cn(GRID, "bg-card border border-border rounded-lg px-4 py-3")}>
+        {/* Order — left aligned */}
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-2">
+            {orderNumber ? (
+              <Link
+                to={`/orders/${orderNumber}`}
+                className={cn("font-mono text-sm font-semibold hover:underline shrink-0", getOrderNumberColor(wooStatus))}
+              >
+                {orderNumber}
+              </Link>
+            ) : (
+              <span className="font-mono text-sm font-semibold text-foreground shrink-0">{exc.title}</span>
+            )}
+            {orderNumber && (
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" asChild>
+                <Link to={`/orders/${orderNumber}`}>
+                  <Eye className="w-3 h-3" />
+                </Link>
+              </Button>
+            )}
+          </div>
           {exc.orders?.customer_name && (
-            <span className="text-sm text-muted-foreground truncate">{exc.orders.customer_name}</span>
+            <span className="text-xs text-muted-foreground truncate">{exc.orders.customer_name}</span>
           )}
         </div>
 
-        {/* Days On Hold */}
-        <span className={cn("text-xs font-semibold tabular-nums text-center", getDaysColor(days))}>
-          {days}d
+        {/* Order Date — center */}
+        <span className="text-xs text-muted-foreground text-center">
+          {orderDate ? formatDate(orderDate) : "—"}
         </span>
 
-        {/* Order Date */}
-        <span className="text-xs text-muted-foreground text-center">{orderDate ? formatDate(orderDate) : "—"}</span>
+        {/* Contacted — center */}
+        <span className="text-xs text-muted-foreground text-center">
+          {formatDate(contactedDate)}
+        </span>
 
-        {/* Contacted */}
-        <span className="text-xs text-muted-foreground text-center">{formatDate(contactedDate)}</span>
-
-        {/* Reason */}
-        <Select onValueChange={(val) => handleReasonChange(exc.id, val)}>
-          <SelectTrigger className={cn(
-            "h-7 w-full text-xs",
-            reasonMeta
-              ? cn(reasonMeta.color, "border-amber-500/40 font-medium rounded-full justify-center")
-              : ""
-          )}>
-            <SelectValue placeholder={reasonMeta ? reasonMeta.label : "Reason"} />
-          </SelectTrigger>
-          <SelectContent>
-            {REASON_OPTIONS.map(r => (
-              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Status */}
-        <div className="flex justify-center">
-          {isOnHold ? (
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-600">
-              On Hold
+        {/* Reason — read-only pill, left aligned */}
+        <div>
+          {reasonMeta ? (
+            <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", reasonMeta.color)}>
+              {reasonMeta.label}
             </span>
           ) : (
-            <Select
-              onValueChange={(val) => handleStatusChange(exc, val)}
-              disabled={updatingId === exc.id}
-            >
-              <SelectTrigger className="h-7 w-full text-xs">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <span className="text-xs text-muted-foreground">—</span>
           )}
         </div>
 
-        {/* View */}
-        <div className="flex justify-end">
-          {orderNumber ? (
-            <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-              <Link to={`/orders/${orderNumber}`}>
-                <Eye className="w-3 h-3 mr-1" /> View
-              </Link>
-            </Button>
-          ) : (
-            <div />
-          )}
+        {/* Status — centered pill */}
+        <div className="flex justify-center">
+          {getStatusPill(exc)}
         </div>
       </div>
     );
@@ -250,9 +158,7 @@ export default function ExceptionsPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-end gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold">Exception Queue</h1>
-        </div>
+        <h1 className="text-2xl font-bold">Exception Queue</h1>
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs font-medium">
             {active.length} Active
@@ -266,19 +172,19 @@ export default function ExceptionsPage() {
         </div>
       </div>
 
-      {isLoading ? <LoadingSpinner message="Loading exceptions..." /> : active.length === 0 && resolved.length === 0 ? (
+      {isLoading ? (
+        <LoadingSpinner message="Loading exceptions..." />
+      ) : active.length === 0 && resolved.length === 0 ? (
         <EmptyState icon={AlertTriangle} title="No exceptions" description="Exceptions will appear here when issues are detected." />
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-5 overflow-x-auto">
           {/* Column headers */}
           <div className={cn(GRID, "px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider")}>
             <span>Order</span>
-            <span className="text-center">Days</span>
             <span className="text-center">Order Date</span>
             <span className="text-center">Contacted</span>
             <span>Reason</span>
             <span className="text-center">Status</span>
-            <span className="text-right">Action</span>
           </div>
 
           {/* On-Hold section */}
