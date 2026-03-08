@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Pass 1: Insert parents and standalones
+    // Pass 1: Insert parents (MODEL rows) and standalones
     const parents = products.filter((p: any) => p.row_type === 'parent' || p.row_type === 'standalone');
     const variants = products.filter((p: any) => p.row_type === 'variant');
 
@@ -42,13 +42,10 @@ Deno.serve(async (req) => {
     }
 
     // Pass 2: Insert variants with parent_product_id
+    // Resolve parent by removing last SKU segment
     const variantRows = variants.map((v: any) => {
-      // Resolve parent SKU by removing last segment
       const segments = v.sku.split('-');
-      let parentSku: string | null = null;
-      if ((v.category === 'playing_cue' || v.category === 'apparel') && segments.length >= 4) {
-        parentSku = segments.slice(0, -1).join('-');
-      }
+      const parentSku = segments.length >= 3 ? segments.slice(0, -1).join('-') : null;
       return {
         company_id, sku: v.sku, name: v.name,
         category: v.category, row_type: v.row_type, description: v.description,

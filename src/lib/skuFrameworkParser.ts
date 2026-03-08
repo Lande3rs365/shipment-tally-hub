@@ -8,10 +8,10 @@ export interface ParsedSkuProduct {
   description: string | null;
 }
 
-// Category derivation from SKU prefix
+// Category derivation from SKU prefix (v12 format)
 function deriveCategory(sku: string): string {
   const s = sku.toUpperCase();
-  if (s.startsWith('PC-')) return 'playing_cue';
+  if (s.startsWith('JF-PC-') || s.startsWith('DL-PC-')) return 'playing_cue';
   if (s.startsWith('SH-')) return 'shaft';
   if (s.startsWith('BK-')) return 'break_cue';
   if (s.startsWith('JP-')) return 'jump_cue';
@@ -19,6 +19,8 @@ function deriveCategory(sku: string): string {
   if (s.startsWith('CS-')) return 'case';
   if (s.startsWith('ACC-')) return 'accessory';
   if (s.startsWith('APP-')) return 'apparel';
+  // Legacy v5 prefixes
+  if (s.startsWith('PC-')) return 'playing_cue';
   return 'other';
 }
 
@@ -31,15 +33,19 @@ function cell(row: Record<string, any>, ...keys: string[]): string {
   return '';
 }
 
+// Map Row Type column to our internal types
+function mapRowType(raw: string): 'parent' | 'variant' {
+  const upper = raw.toUpperCase();
+  if (upper === 'MODEL' || upper === 'PARENT') return 'parent';
+  return 'variant';
+}
+
 /**
  * Read a sheet as JSON, auto-detecting the header row by scanning for a target column name.
- * This handles sheets that have title/banner rows before the actual column headers.
  */
 function sheetToJsonAutoHeader(sheet: XLSX.WorkSheet, targetHeader: string): Record<string, any>[] {
-  // Get all rows as arrays first
   const allRows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' });
   
-  // Find the row index containing our target header
   let headerIdx = -1;
   for (let i = 0; i < Math.min(allRows.length, 10); i++) {
     const row = allRows[i];
@@ -50,11 +56,9 @@ function sheetToJsonAutoHeader(sheet: XLSX.WorkSheet, targetHeader: string): Rec
   }
   
   if (headerIdx === -1) {
-    // Fallback: try default behavior
     return XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
   }
   
-  // Use the detected header row as column names
   const headers = allRows[headerIdx].map((h: any) => String(h).trim());
   const result: Record<string, any>[] = [];
   
@@ -73,144 +77,161 @@ function sheetToJsonAutoHeader(sheet: XLSX.WorkSheet, targetHeader: string): Rec
   return result;
 }
 
-// Parse Sheet 2: Shafts
+// Check if a value is a section header row (e.g. "── Classic — Low Deflection Carbon Fiber ($199) ──")
+function isSectionRow(sku: string): boolean {
+  return sku.startsWith('──') || sku.startsWith('—') || sku === '';
+}
+
+// Parse Sheet 2: Shafts (v12: has MODEL/VARIANT Row Type)
 function parseShafts(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
+  const rows = sheetToJsonAutoHeader(sheet, 'SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
-    const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
-    if (!sku || !sku.startsWith('SH-')) continue;
-    const model = cell(row, 'Shaft Model', 'shaft_model', 'Model');
-    const joint = cell(row, 'Joint Type', 'joint_type');
+    const sku = cell(row, 'SKU', 'New SKU', 'new_sku');
+    if (!sku || isSectionRow(sku) || !sku.startsWith('SH-')) continue;
+    const name = cell(row, 'Shaft Name', 'Shaft Model', 'shaft_model', 'Model');
+    const joint = cell(row, 'Joint', 'Joint Type', 'joint_type');
     const tip = cell(row, 'Tip Size', 'tip_size');
-    const desc = [joint, tip].filter(Boolean).join(' | ') || null;
-    products.push({
-      sku,
-      name: model || sku,
-      category: 'shaft',
-      row_type: 'standalone',
-      description: desc,
-    });
+    const rowType = cell(row, 'Row Type', 'row_type');
+    const rt = rowType ? mapRowType(rowType) : 'standalone';
+    const desc = [joint !== '—' && joint, tip !== '—' && tip].filter(Boolean).join(' | ') || null;
+    products.push({ sku, name: name || sku, category: 'shaft', row_type: rt, description: desc });
   }
   return products;
 }
 
-// Parse Sheet 3: Playing Cues (has Row Type column)
+// Parse Sheet 3: Playing Cues (v12: JF-PC- / DL-PC- prefixes, Channel column)
 function parsePlayingCues(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
+  const rows = sheetToJsonAutoHeader(sheet, 'SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
-    const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
-    if (!sku || !sku.startsWith('PC-')) continue;
-    const model = cell(row, 'Model Name', 'model_name', 'Model');
+    const sku = cell(row, 'SKU', 'New SKU', 'new_sku');
+    if (!sku || isSectionRow(sku)) continue;
+    if (!(sku.startsWith('JF-PC-') || sku.startsWith('DL-PC-') || sku.startsWith('PC-'))) continue;
+    const name = cell(row, 'Product Name', 'Model Name', 'model_name', 'Model');
     const tier = cell(row, 'Tier');
-    const wrapCode = cell(row, 'Wrap Code', 'wrap_code');
-    const wrapDesc = cell(row, 'Wrap Description', 'wrap_description');
-    const rowType = cell(row, 'Row Type', 'row_type').toUpperCase();
-    
-    const rt: 'parent' | 'variant' = rowType === 'PARENT' ? 'parent' : 'variant';
-    const descParts = [tier && `Tier: ${tier}`, wrapCode && wrapCode !== '—' && `Wrap: ${wrapCode}`, wrapDesc && wrapDesc !== '—' && wrapDesc].filter(Boolean);
-    
+    const channel = cell(row, 'Channel');
+    const wrap = cell(row, 'Wrap / Finish', 'Wrap Code', 'wrap_code');
+    const notes = cell(row, 'Notes');
+    const rowType = cell(row, 'Row Type', 'row_type');
+    const rt = rowType ? mapRowType(rowType) : 'variant';
+    const descParts = [
+      tier && `Tier: ${tier}`,
+      channel && channel !== '—' && `Channel: ${channel}`,
+      wrap && wrap !== '—' && `Wrap: ${wrap}`,
+      notes && notes !== '—' && notes,
+    ].filter(Boolean);
     products.push({
-      sku,
-      name: model || sku,
-      category: 'playing_cue',
-      row_type: rt,
+      sku, name: name || sku, category: 'playing_cue', row_type: rt,
       description: descParts.length > 0 ? descParts.join(' | ') : null,
     });
   }
   return products;
 }
 
-// Parse Sheet 4: Break & Jump
+// Parse Sheet 4: Break & Jump (v12: has MODEL/VARIANT)
 function parseBreakJump(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
+  const rows = sheetToJsonAutoHeader(sheet, 'SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
-    const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
-    if (!sku || !(sku.startsWith('BK-') || sku.startsWith('JP-') || sku.startsWith('BJ-'))) continue;
+    const sku = cell(row, 'SKU', 'New SKU', 'new_sku');
+    if (!sku || isSectionRow(sku)) continue;
+    if (!(sku.startsWith('BK-') || sku.startsWith('JP-') || sku.startsWith('BJ-'))) continue;
     const name = cell(row, 'Product Name', 'product_name', 'Name');
-    const cueType = cell(row, 'Cue Type', 'cue_type');
+    const cueType = cell(row, 'Type', 'Cue Type', 'cue_type');
     const wrap = cell(row, 'Wrap / Variant', 'wrap_/_variant', 'Wrap');
-    const desc = [cueType, wrap].filter(Boolean).join(' | ') || null;
+    const rowType = cell(row, 'Row Type', 'row_type');
+    const rt = rowType ? mapRowType(rowType) : 'standalone';
+    const notes = cell(row, 'Notes');
+    const descParts = [
+      cueType && cueType !== '—' && cueType,
+      wrap && wrap !== '—' && wrap,
+      notes && notes !== '—' && notes,
+    ].filter(Boolean);
     products.push({
-      sku,
-      name: name || sku,
-      category: deriveCategory(sku),
-      row_type: 'standalone',
-      description: desc,
+      sku, name: name || sku, category: deriveCategory(sku), row_type: rt,
+      description: descParts.length > 0 ? descParts.join(' | ') : null,
     });
   }
   return products;
 }
 
-// Parse Sheet 5: Cases
+// Parse Sheet 5: Cases (v12: has MODEL/VARIANT, Capacity column)
 function parseCases(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
+  const rows = sheetToJsonAutoHeader(sheet, 'SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
-    const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
-    if (!sku || !sku.startsWith('CS-')) continue;
+    const sku = cell(row, 'SKU', 'New SKU', 'new_sku');
+    if (!sku || isSectionRow(sku) || !sku.startsWith('CS-')) continue;
     const name = cell(row, 'Product Name', 'product_name', 'Name');
     const type = cell(row, 'Type');
-    const colour = cell(row, 'Colour');
-    const size = cell(row, 'Size/Capacity', 'size_capacity', 'Size');
-    const descParts = [type, colour && colour !== '—' && colour, size && size !== '—' && size].filter(Boolean);
+    const colour = cell(row, 'Colour', 'Color');
+    const capacity = cell(row, 'Capacity', 'Size/Capacity', 'size_capacity', 'Size');
+    const rowType = cell(row, 'Row Type', 'row_type');
+    const rt = rowType ? mapRowType(rowType) : 'standalone';
+    const notes = cell(row, 'Notes');
+    const descParts = [
+      type && type !== '—' && type,
+      colour && colour !== '—' && colour,
+      capacity && capacity !== '—' && capacity,
+      notes && notes !== '—' && notes,
+    ].filter(Boolean);
     products.push({
-      sku,
-      name: name || sku,
-      category: 'case',
-      row_type: 'standalone',
+      sku, name: name || sku, category: 'case', row_type: rt,
       description: descParts.length > 0 ? descParts.join(' | ') : null,
     });
   }
   return products;
 }
 
-// Parse Sheet 6: Accessories
+// Parse Sheet 6: Accessories (v12: has MODEL/VARIANT)
 function parseAccessories(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
+  const rows = sheetToJsonAutoHeader(sheet, 'SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
-    const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
-    if (!sku || !sku.startsWith('ACC-')) continue;
+    const sku = cell(row, 'SKU', 'New SKU', 'new_sku');
+    if (!sku || isSectionRow(sku) || !sku.startsWith('ACC-')) continue;
     const name = cell(row, 'Product Name', 'product_name', 'Name');
     const subCat = cell(row, 'Sub-Cat', 'sub_cat', 'SubCat');
-    const variant = cell(row, 'Variant / Size', 'variant_/_size', 'Variant');
-    const descParts = [subCat, variant].filter(Boolean);
+    const variant = cell(row, 'Variant', 'Variant / Size', 'variant_/_size');
+    const rowType = cell(row, 'Row Type', 'row_type');
+    const rt = rowType ? mapRowType(rowType) : 'standalone';
+    const notes = cell(row, 'Notes');
+    const descParts = [
+      subCat && subCat !== '—' && subCat,
+      variant && variant !== '—' && variant,
+      notes && notes !== '—' && notes,
+    ].filter(Boolean);
     products.push({
-      sku,
-      name: name || sku,
-      category: 'accessory',
-      row_type: 'standalone',
+      sku, name: name || sku, category: 'accessory', row_type: rt,
       description: descParts.length > 0 ? descParts.join(' | ') : null,
     });
   }
   return products;
 }
 
-// Parse Sheet 7: Apparel (has Size column = PARENT for parents)
+// Parse Sheet 7: Apparel (v12: MODEL/VARIANT with Size column)
 function parseApparel(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
+  const rows = sheetToJsonAutoHeader(sheet, 'SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
-    const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
-    if (!sku || !sku.startsWith('APP-')) continue;
+    const sku = cell(row, 'SKU', 'New SKU', 'new_sku');
+    if (!sku || isSectionRow(sku) || !sku.startsWith('APP-')) continue;
     const name = cell(row, 'Design Name', 'design_name', 'Name');
-    const cat = cell(row, 'Category');
     const gender = cell(row, 'Gender');
-    const type = cell(row, 'Type');
-    const colour = cell(row, 'Colour');
+    const type = cell(row, 'Type', 'Category');
     const size = cell(row, 'Size');
-    
-    const isParent = size.toUpperCase() === 'PARENT';
-    const descParts = [cat, gender && `Gender: ${gender}`, type, colour && colour !== '—' && colour, !isParent && size && size !== '—' && `Size: ${size}`].filter(Boolean);
-    
+    const rowType = cell(row, 'Row Type', 'row_type');
+    const rt = rowType ? mapRowType(rowType) : (size === '—' || !size ? 'parent' : 'variant');
+    const notes = cell(row, 'Notes');
+    const descParts = [
+      gender && gender !== '—' && `Gender: ${gender}`,
+      type && type !== '—' && type,
+      rt === 'variant' && size && size !== '—' && `Size: ${size}`,
+      notes && notes !== '—' && notes,
+    ].filter(Boolean);
     products.push({
-      sku,
-      name: name || sku,
-      category: 'apparel',
-      row_type: isParent ? 'parent' : 'variant',
+      sku, name: name || sku, category: 'apparel', row_type: rt,
       description: descParts.length > 0 ? descParts.join(' | ') : null,
     });
   }
@@ -243,16 +264,20 @@ export function parseSkuFrameworkXlsx(data: ArrayBuffer): ParsedSkuProduct[] {
   return all;
 }
 
-// Resolve parent_product_id for variants by finding the parent SKU
-// For playing cues: variant PC-ASP-JF1010-NW -> parent PC-ASP-JF1010
-// For apparel: variant APP-MJ-PATRIOT-USA-S -> parent APP-MJ-PATRIOT-USA
-export function resolveParentSku(variantSku: string, category: string): string | null {
-  if (category === 'playing_cue' || category === 'apparel') {
-    const segments = variantSku.split('-');
-    // Remove last segment to get parent SKU
-    if (segments.length >= 4) {
-      return segments.slice(0, -1).join('-');
-    }
+/**
+ * Resolve parent SKU for variants by removing the last segment.
+ * v12 examples:
+ *   JF-PC-ASP-2001-NW → JF-PC-ASP-2001
+ *   SH-CL-RAD-125 → SH-CL
+ *   APP-MJ-PATRIOT-USA-XL → APP-MJ-PATRIOT-USA
+ *   BK-BRK-BRKR-RED-NW → BK-BRK-BRKR
+ *   CS-SC-BFLY-TAN → CS-SC-BFLY
+ *   ACC-EXT-3IN → ACC-EXT
+ */
+export function resolveParentSku(variantSku: string): string | null {
+  const segments = variantSku.split('-');
+  if (segments.length >= 3) {
+    return segments.slice(0, -1).join('-');
   }
   return null;
 }

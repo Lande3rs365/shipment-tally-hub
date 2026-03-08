@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import skuFrameworkUrl from "@/assets/JFlowers_SKU_Framework_v5.xlsx?url";
+import skuFrameworkUrl from "@/assets/JFlowers_SKU_Framework_v12.xlsx?url";
 import { useProducts, useImportSkuFramework } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -648,7 +648,7 @@ function OverviewTab({ productsByCategory }: { productsByCategory: Record<string
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <h2 className="font-semibold text-foreground">SKU Framework Reference</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">JFlowers SKU Framework v5.0 — Dealership Channel — March 2026</p>
+          <p className="text-xs text-muted-foreground mt-0.5">JFlowers SKU Framework v12.0 — Dealership Channel — March 2026</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
