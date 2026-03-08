@@ -96,7 +96,7 @@ export default function Dashboard() {
         <KpiCard title="Shipped" value={shipped} icon={Truck} variant="success" />
         <KpiCard title="Shipments Today" value={shipmentsToday} icon={Clock} variant="warning" />
         <KpiCard title="Exceptions" value={exceptionCount} icon={AlertTriangle} variant="danger" />
-        <KpiCard title="Stock SKUs" value={stats?.totalSKUs || 0} icon={Warehouse} variant="default" />
+        <KpiCard title="Returns Pending" value={stats?.returnsPending || 0} icon={Package} variant="default" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

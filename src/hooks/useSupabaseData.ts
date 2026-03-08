@@ -294,7 +294,7 @@ export function useDashboardStats() {
         ordersShipped: shipped,
         shipmentsToday: (todayShipments.data || []).length,
         exceptions: exceptionList.length,
-        totalSKUs: products.count || 0,
+        returnsPending: products.count || 0,
         stockOnHand: totalOnHand,
         inventoryAlerts: alerts,
         oldestExceptions: oldestExceptions.data || [],
