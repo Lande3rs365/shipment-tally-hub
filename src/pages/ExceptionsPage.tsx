@@ -144,23 +144,22 @@ export default function ExceptionsPage() {
   };
 
   const renderExceptionRow = (exc: typeof exceptions[0], isOnHold: boolean) => {
-    const followUpDue = exc.follow_up_due_at;
-    const isOverdue = followUpDue && new Date(followUpDue) < new Date();
     const orderNumber = exc.orders?.order_number;
     const wooStatus = exc.orders?.woo_status;
     const reasonMeta = getReasonMeta(exc.reason);
     const contactedDate = exc.created_at;
     const orderDate = exc.orders?.order_date;
+    const isOverdue = exc.follow_up_due_at && new Date(exc.follow_up_due_at) < new Date();
 
     return (
       <div
         key={exc.id}
         className={cn(
-          "bg-card border rounded-lg px-4 py-3 grid grid-cols-[minmax(180px,1fr)_90px_120px_120px_120px_auto_120px] items-center gap-3",
+          "bg-card border rounded-lg px-4 py-3 grid grid-cols-[minmax(180px,1fr)_90px_90px_140px_120px_90px] items-center gap-3",
           isOverdue ? "border-destructive/60" : "border-border"
         )}
       >
-        {/* Col 1: Order# + Customer + Severity */}
+        {/* Col 1: Order# + Customer + On Hold pill */}
         <div className="flex items-center gap-2 min-w-0 flex-wrap">
           {orderNumber ? (
             <Link
@@ -175,7 +174,11 @@ export default function ExceptionsPage() {
           {exc.orders?.customer_name && (
             <span className="text-sm text-muted-foreground truncate">{exc.orders.customer_name}</span>
           )}
-          <StatusBadge status={exc.severity} />
+          {isOnHold && (
+            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-600">
+              On Hold
+            </span>
+          )}
           {isOverdue && (
             <span className="text-xs text-destructive font-medium px-2 py-0.5 bg-destructive/10 rounded">
               Overdue
@@ -189,9 +192,12 @@ export default function ExceptionsPage() {
         {/* Col 3: Customer contacted */}
         <span className="text-xs text-muted-foreground">{formatDate(contactedDate)}</span>
 
-        {/* Col 4: Reason */}
+        {/* Col 4: Reason - colored pill when set, dropdown to change */}
         <Select onValueChange={(val) => handleReasonChange(exc.id, val)}>
-          <SelectTrigger className="h-7 w-[120px] text-xs">
+          <SelectTrigger className={cn(
+            "h-7 w-[140px] text-xs border",
+            reasonMeta ? cn(reasonMeta.color, "border-transparent font-medium rounded-full justify-center") : ""
+          )}>
             <SelectValue placeholder={reasonMeta ? reasonMeta.label : "Reason"} />
           </SelectTrigger>
           <SelectContent>
@@ -201,33 +207,13 @@ export default function ExceptionsPage() {
           </SelectContent>
         </Select>
 
-        {/* Col 5: View */}
-        {orderNumber ? (
-          <Button variant="outline" size="sm" className="h-7 text-xs w-[120px]" asChild>
-            <Link to={`/orders/${orderNumber}`}>
-              <Eye className="w-3 h-3 mr-1" /> View
-            </Link>
-          </Button>
-        ) : (
-          <div className="w-[120px]" />
-        )}
-
-        {/* Col 6: Follow-up (if applicable) */}
-        <div className="text-xs text-muted-foreground">
-          {followUpDue && !isOverdue && isOnHold && (
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> {formatDate(followUpDue)}
-            </span>
-          )}
-        </div>
-
-        {/* Col 7: Status */}
+        {/* Col 5: Status */}
         <Select
           onValueChange={(val) => handleStatusChange(exc, val)}
           disabled={updatingId === exc.id}
         >
           <SelectTrigger className="h-7 w-[120px] text-xs">
-            <SelectValue placeholder="Change status" />
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             {STATUS_OPTIONS.map(opt => (
@@ -235,6 +221,17 @@ export default function ExceptionsPage() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Col 6: View */}
+        {orderNumber ? (
+          <Button variant="outline" size="sm" className="h-7 text-xs w-[90px]" asChild>
+            <Link to={`/orders/${orderNumber}`}>
+              <Eye className="w-3 h-3 mr-1" /> View
+            </Link>
+          </Button>
+        ) : (
+          <div className="w-[90px]" />
+        )}
       </div>
     );
   };
