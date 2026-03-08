@@ -216,6 +216,7 @@ export function parseShipmentCSV(csvText: string): ParsedShipment[] {
       carrier: (row.carrier || "").trim() || null,
       service: (row.service || "").trim() || null,
       status: trackingStatus,
+      carrier_status_detail: (row.tracking_status_description || row.status_description || "").trim() || null,
       shipped_date: trackingStatus !== "label_created" ? shipDate : null,
       delivered_date: trackingStatus === "delivered" ? shipDate : null,
       shipping_cost: safeFloat(row.cost),
