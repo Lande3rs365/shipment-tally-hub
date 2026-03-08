@@ -407,7 +407,7 @@ const ReturnsTable = ({ returns, isLoading }: { returns: any[]; isLoading: boole
                 <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Returned Date</th>
                 <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Reason</th>
                 <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Qty</th>
-                <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Action</th>
+                <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -425,7 +425,7 @@ const ReturnsTable = ({ returns, isLoading }: { returns: any[]; isLoading: boole
                     {r.return_qty ?? '—'}
                   </td>
                   <td className="py-2 px-3">
-                    <StatusBadge status={r.stock_outcome?.replace(/_/g, ' ') || r.status} />
+                    <StatusBadge status={r.status?.replace(/_/g, ' ') || '—'} />
                   </td>
                 </tr>
               ))}
