@@ -17,6 +17,8 @@ export interface ImportResult {
   errors: number;
 }
 
+export type ProgressCallback = (processed: number, errors: number) => void;
+
 // ── Preview: scan what will be created vs updated ──
 
 export async function previewWooCommerceImport(orders: ParsedOrder[], companyId: string): Promise<ImportPreview> {
