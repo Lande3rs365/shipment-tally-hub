@@ -77,7 +77,7 @@ export async function previewMasterImport(rows: ParsedMasterRow[], companyId: st
 
 // ── Import: actually write to DB ──
 
-export async function importWooCommerceOrders(orders: ParsedOrder[], companyId: string, userId: string): Promise<ImportResult> {
+export async function importWooCommerceOrders(orders: ParsedOrder[], companyId: string, userId: string, onProgress?: ProgressCallback): Promise<ImportResult> {
   let processed = 0, errors = 0;
 
   for (const order of orders) {
