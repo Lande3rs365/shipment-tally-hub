@@ -281,7 +281,7 @@ export function useImportSkuFramework() {
       skipped += variants.length - newVariants.length;
       for (let i = 0; i < newVariants.length; i += BATCH) {
         const batch = newVariants.slice(i, i + BATCH).map(v => {
-          const parentSku = resolveParentSku(v.sku, v.category);
+          const parentSku = resolveParentSku(v.sku);
           const parentId = parentSku ? existingMap.get(parentSku) || null : null;
           return {
             company_id: companyId, sku: v.sku, name: v.name,

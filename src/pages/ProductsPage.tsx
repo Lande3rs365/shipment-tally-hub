@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import skuFrameworkUrl from "@/assets/JFlowers_SKU_Framework_v5.xlsx?url";
+import skuFrameworkUrl from "@/assets/JFlowers_SKU_Framework_v12.xlsx?url";
 import { useProducts, useImportSkuFramework } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
 import { supabase } from "@/integrations/supabase/client";
