@@ -65,8 +65,10 @@ export default function Dashboard() {
   const [period, setPeriod] = useState<Period>("week");
   const [ordersPage, setOrdersPage] = useState(1);
   const [exceptionsPage, setExceptionsPage] = useState(1);
+  const [alertsPage, setAlertsPage] = useState(1);
   const [ordersSort, setOrdersSort] = useState<SortState>({ key: 'order_date', dir: 'asc' });
   const [exceptionsSort, setExceptionsSort] = useState<SortState>({ key: 'orders.order_date', dir: 'asc' });
+  const [alertsSort, setAlertsSort] = useState<SortState>({ key: 'orders.order_date', dir: 'asc' });
 
   const toggleSort = (setter: React.Dispatch<React.SetStateAction<SortState>>, pageSetter: React.Dispatch<React.SetStateAction<number>>) => (key: string) => {
     setter(prev => ({ key, dir: prev.key === key && prev.dir === 'asc' ? 'desc' : 'asc' }));
