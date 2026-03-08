@@ -228,14 +228,6 @@ export default function ProductsPage() {
 
   if (!currentCompany) return <EmptyState icon={Tag} title="No company selected" />;
 
-  // Build filter chips config
-  const filterChips: { key: string; label: string }[] = [
-    { key: 'overview', label: 'Overview' },
-    ...TABS.map(tab => ({
-      key: tab.key,
-      label: `${tab.label} (${getTabProducts(tab).length})`,
-    })),
-  ];
 
   const renderTable = (tab: TabConfig) => {
     const tabProducts = getTabProducts(tab);
