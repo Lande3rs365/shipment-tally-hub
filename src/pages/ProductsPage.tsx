@@ -408,6 +408,7 @@ export default function ProductsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex flex-wrap h-auto gap-1">
+          <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
           {TABS.map(tab => {
             const count = getTabProducts(tab).length;
             return (
@@ -418,6 +419,9 @@ export default function ProductsPage() {
             );
           })}
         </TabsList>
+        <TabsContent value="overview">
+          <OverviewTab totalProducts={products.length} productsByCategory={productsByCategory} />
+        </TabsContent>
         {TABS.map(tab => (
           <TabsContent key={tab.key} value={tab.key}>
             {renderTable(tab)}
