@@ -451,15 +451,25 @@ export default function ProductsPage() {
           { key: 'accessories', title: 'Accessories', value: counts.accessories, icon: Gem, variant: 'info' as const },
           { key: 'apparel', title: 'Apparel', value: counts.apparel, icon: Shirt, variant: 'warning' as const },
           { key: 'overview', title: 'Categories', value: Object.keys(productsByCategory).length, icon: Tag, variant: 'success' as const },
-        ].map(card => (
-          <button
-            key={card.key}
-            onClick={() => setActiveFilter(card.key)}
-            className={cn("text-left rounded-lg transition-all", activeFilter === card.key && "ring-2 ring-primary ring-offset-2 ring-offset-background")}
-          >
-            <KpiCard title={card.title} value={card.value} icon={card.icon} variant={card.variant} />
-          </button>
-        ))}
+        ].map(card => {
+          const ringColorMap: Record<string, string> = {
+            default: 'ring-muted-foreground',
+            success: 'ring-success',
+            warning: 'ring-warning',
+            danger: 'ring-destructive',
+            info: 'ring-info',
+          };
+          const ringColor = ringColorMap[card.variant] || 'ring-primary';
+          return (
+            <button
+              key={card.key}
+              onClick={() => setActiveFilter(card.key)}
+              className={cn("text-left rounded-lg transition-all", activeFilter === card.key && `ring-2 ${ringColor} ring-offset-2 ring-offset-background`)}
+            >
+              <KpiCard title={card.title} value={card.value} icon={card.icon} variant={card.variant} />
+            </button>
+          );
+        })}
       </div>
 
       {/* Search + Import on one line */}
