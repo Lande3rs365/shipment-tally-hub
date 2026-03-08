@@ -175,30 +175,38 @@ export default function Dashboard() {
         {(stats?.todayProcessing || []).length === 0 ? (
           <p className="text-xs text-muted-foreground">No processing orders today</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
-                  <th className="text-left py-2 px-3">Order</th>
-                  <th className="text-left py-2 px-3">Customer</th>
-                  <th className="text-left py-2 px-3">Date</th>
-                  <th className="text-left py-2 px-3">Woo Status</th>
-                  <th className="text-right py-2 px-3">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats!.todayProcessing.map((o: any) => (
-                  <tr key={o.id} onClick={() => navigate(`/orders/${o.order_number}`)} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors">
-                    <td className="py-2 px-3 font-mono text-primary font-medium">{o.order_number}</td>
-                    <td className="py-2 px-3 text-foreground">{o.customer_name || '—'}</td>
-                    <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{o.order_date ? format(new Date(o.order_date), 'dd MMM') : '—'}</td>
-                    <td className="py-2 px-3"><StatusBadge status={o.woo_status || 'processing'} /></td>
-                    <td className="py-2 px-3 font-mono text-xs text-right">{o.total_amount ? `$${Number(o.total_amount).toFixed(2)}` : '—'}</td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
+                    <th className="text-left py-2 px-3">Order</th>
+                    <th className="text-left py-2 px-3">Customer</th>
+                    <th className="text-left py-2 px-3">Date</th>
+                    <th className="text-left py-2 px-3">Woo Status</th>
+                    <th className="text-right py-2 px-3">Total</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {stats!.todayProcessing.slice((ordersPage - 1) * PAGE_SIZE, ordersPage * PAGE_SIZE).map((o: any) => (
+                    <tr key={o.id} onClick={() => navigate(`/orders/${o.order_number}`)} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors">
+                      <td className="py-2 px-3 font-mono text-primary font-medium">{o.order_number}</td>
+                      <td className="py-2 px-3 text-foreground">{o.customer_name || '—'}</td>
+                      <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{o.order_date ? format(new Date(o.order_date), 'dd MMM') : '—'}</td>
+                      <td className="py-2 px-3"><StatusBadge status={o.woo_status || 'processing'} /></td>
+                      <td className="py-2 px-3 font-mono text-xs text-right">{o.total_amount ? `$${Number(o.total_amount).toFixed(2)}` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Paginator
+              page={ordersPage}
+              totalPages={Math.ceil((stats?.todayProcessing || []).length / PAGE_SIZE)}
+              onPrev={() => setOrdersPage(p => Math.max(1, p - 1))}
+              onNext={() => setOrdersPage(p => Math.min(Math.ceil((stats?.todayProcessing || []).length / PAGE_SIZE), p + 1))}
+            />
+          </>
         )}
       </div>
 
