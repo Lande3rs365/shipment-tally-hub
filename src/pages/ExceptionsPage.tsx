@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useExceptions } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
-import { AlertTriangle, CheckCircle, Phone } from "lucide-react";
+import { AlertTriangle, CheckCircle, Phone, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -46,9 +46,30 @@ const formatDate = (d: string | null) => {
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 };
 
+type SortKey = "order_date" | "contacted" | "reason" | "status";
+type SortDir = "asc" | "desc";
+
+const SortIcon = ({ column, activeCol, activeDir }: { column: SortKey; activeCol: SortKey | null; activeDir: SortDir }) => {
+  if (activeCol !== column) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
+  return activeDir === "asc"
+    ? <ArrowUp className="w-3 h-3 ml-1" />
+    : <ArrowDown className="w-3 h-3 ml-1" />;
+};
+
 export default function ExceptionsPage() {
   const { currentCompany } = useCompany();
   const { data: exceptions = [], isLoading } = useExceptions();
+  const [sortCol, setSortCol] = useState<SortKey | null>("order_date");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const toggleSort = (col: SortKey) => {
+    if (sortCol === col) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  };
 
   const active = useMemo(() =>
     exceptions.filter(e => e.status !== "resolved" && e.status !== "dismissed"),
@@ -59,20 +80,80 @@ export default function ExceptionsPage() {
     [exceptions]
   );
 
+  const applySorting = (items: typeof active) => {
+    if (!sortCol) return items;
+    const sorted = [...items].sort((a, b) => {
+      let cmp = 0;
+      switch (sortCol) {
+        case "order_date": {
+          const dA = a.orders?.order_date || a.created_at;
+          const dB = b.orders?.order_date || b.created_at;
+          cmp = new Date(dA).getTime() - new Date(dB).getTime();
+          break;
+        }
+        case "contacted":
+          cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        case "reason":
+          cmp = (a.reason || "zzz").localeCompare(b.reason || "zzz");
+          break;
+        case "status": {
+          const sA = a.exception_type === "on_hold" ? "on_hold" : a.status;
+          const sB = b.exception_type === "on_hold" ? "on_hold" : b.status;
+          cmp = sA.localeCompare(sB);
+          break;
+        }
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  };
+
   const sortedActive = useMemo(() => {
     const onHold = active.filter(e => e.exception_type === "on_hold");
     const other = active.filter(e => e.exception_type !== "on_hold");
-
-    const sortFn = (a: typeof active[0], b: typeof active[0]) => {
-      const dateA = a.orders?.order_date || a.created_at;
-      const dateB = b.orders?.order_date || b.created_at;
-      return new Date(dateA).getTime() - new Date(dateB).getTime();
-    };
-
-    return { onHold: [...onHold].sort(sortFn), other: [...other].sort(sortFn) };
-  }, [active]);
+    return { onHold: applySorting(onHold), other: applySorting(other) };
+  }, [active, sortCol, sortDir]);
 
   if (!currentCompany) return <EmptyState icon={AlertTriangle} title="No company selected" />;
+
+  const renderSortableHeader = () => (
+    <TableRow className="bg-muted/50">
+      <TableHead className="w-[340px]">Order</TableHead>
+      <TableHead
+        className="w-[150px] text-center cursor-pointer select-none hover:text-foreground transition-colors"
+        onClick={() => toggleSort("order_date")}
+      >
+        <span className="inline-flex items-center justify-center">
+          Order Date <SortIcon column="order_date" activeCol={sortCol} activeDir={sortDir} />
+        </span>
+      </TableHead>
+      <TableHead
+        className="w-[150px] text-center cursor-pointer select-none hover:text-foreground transition-colors"
+        onClick={() => toggleSort("contacted")}
+      >
+        <span className="inline-flex items-center justify-center">
+          Contacted <SortIcon column="contacted" activeCol={sortCol} activeDir={sortDir} />
+        </span>
+      </TableHead>
+      <TableHead
+        className="w-[200px] cursor-pointer select-none hover:text-foreground transition-colors"
+        onClick={() => toggleSort("reason")}
+      >
+        <span className="inline-flex items-center">
+          Reason <SortIcon column="reason" activeCol={sortCol} activeDir={sortDir} />
+        </span>
+      </TableHead>
+      <TableHead
+        className="w-[140px] text-center cursor-pointer select-none hover:text-foreground transition-colors"
+        onClick={() => toggleSort("status")}
+      >
+        <span className="inline-flex items-center justify-center">
+          Status <SortIcon column="status" activeCol={sortCol} activeDir={sortDir} />
+        </span>
+      </TableHead>
+    </TableRow>
+  );
 
   const renderRow = (exc: typeof exceptions[0]) => {
     const orderNumber = exc.orders?.order_number;
@@ -83,7 +164,6 @@ export default function ExceptionsPage() {
 
     return (
       <TableRow key={exc.id}>
-        {/* Order — clickable number + customer name below */}
         <TableCell className="py-3">
           <div className="flex items-center gap-2 min-w-0">
             {orderNumber ? (
@@ -101,18 +181,12 @@ export default function ExceptionsPage() {
             )}
           </div>
         </TableCell>
-
-        {/* Order Date */}
         <TableCell className="text-center text-xs text-muted-foreground py-3">
           {orderDate ? formatDate(orderDate) : "—"}
         </TableCell>
-
-        {/* Contacted */}
         <TableCell className="text-center text-xs text-muted-foreground py-3">
           {formatDate(exc.created_at)}
         </TableCell>
-
-        {/* Reason — read-only pill */}
         <TableCell className="py-3">
           {reasonMeta ? (
             <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full inline-block", reasonMeta.color)}>
@@ -122,8 +196,6 @@ export default function ExceptionsPage() {
             <span className="text-xs text-muted-foreground">—</span>
           )}
         </TableCell>
-
-        {/* Status */}
         <TableCell className="text-center py-3">
           {isOnHold ? (
             <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-600 inline-block">
@@ -141,7 +213,6 @@ export default function ExceptionsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-end gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Exception Queue</h1>
         <Badge variant="outline" className="text-xs font-medium border-amber-500/40 text-amber-600">
@@ -155,7 +226,6 @@ export default function ExceptionsPage() {
         <EmptyState icon={AlertTriangle} title="No exceptions" description="Exceptions will appear here when issues are detected." />
       ) : (
         <div className="space-y-6">
-          {/* On-Hold section */}
           {sortedActive.onHold.length > 0 && (
             <div>
               <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-2">
@@ -163,24 +233,13 @@ export default function ExceptionsPage() {
               </h3>
               <div className="rounded-lg border border-border overflow-hidden">
                 <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[340px]">Order</TableHead>
-                      <TableHead className="w-[150px] text-center">Order Date</TableHead>
-                      <TableHead className="w-[150px] text-center">Contacted</TableHead>
-                      <TableHead className="w-[200px]">Reason</TableHead>
-                      <TableHead className="w-[140px] text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedActive.onHold.map(exc => renderRow(exc))}
-                  </TableBody>
+                  <TableHeader>{renderSortableHeader()}</TableHeader>
+                  <TableBody>{sortedActive.onHold.map(exc => renderRow(exc))}</TableBody>
                 </Table>
               </div>
             </div>
           )}
 
-          {/* Other exceptions */}
           {sortedActive.other.length > 0 && (
             <div>
               <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
@@ -188,24 +247,13 @@ export default function ExceptionsPage() {
               </h3>
               <div className="rounded-lg border border-border overflow-hidden">
                 <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[340px]">Order</TableHead>
-                      <TableHead className="w-[150px] text-center">Order Date</TableHead>
-                      <TableHead className="w-[150px] text-center">Contacted</TableHead>
-                      <TableHead className="w-[200px]">Reason</TableHead>
-                      <TableHead className="w-[140px] text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedActive.other.map(exc => renderRow(exc))}
-                  </TableBody>
+                  <TableHeader>{renderSortableHeader()}</TableHeader>
+                  <TableBody>{sortedActive.other.map(exc => renderRow(exc))}</TableBody>
                 </Table>
               </div>
             </div>
           )}
 
-          {/* Resolved */}
           {resolved.length > 0 && (
             <div>
               <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
@@ -213,15 +261,7 @@ export default function ExceptionsPage() {
               </h3>
               <div className="rounded-lg border border-border overflow-hidden">
                 <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[340px]">Order</TableHead>
-                      <TableHead className="w-[150px] text-center">Order Date</TableHead>
-                      <TableHead className="w-[150px] text-center">Contacted</TableHead>
-                      <TableHead className="w-[200px]">Reason</TableHead>
-                      <TableHead className="w-[140px] text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableHeader>{renderSortableHeader()}</TableHeader>
                   <TableBody>
                     {resolved.map(exc => {
                       const orderNumber = exc.orders?.order_number;
