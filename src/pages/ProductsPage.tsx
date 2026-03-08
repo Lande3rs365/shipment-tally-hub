@@ -184,7 +184,7 @@ export default function ProductsPage() {
 
   const handleImportBundled = async () => {
     try {
-      const resp = await fetch("/JFlowers_SKU_Framework_v5.xlsx");
+      const resp = await fetch(skuFrameworkUrl);
       const buffer = await resp.arrayBuffer();
       const result = await importMutation.mutateAsync(buffer);
       toast.success(`Imported ${result.created} products (${result.skipped} already existed).`);
