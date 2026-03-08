@@ -8,6 +8,7 @@ import { useCompany } from "@/contexts/CompanyContext";
 import {
   Package, Truck, Warehouse, AlertTriangle,
   BarChart3, Ship, Clock, ArrowRight, ChevronLeft, ChevronRight,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useNavigate } from "react-router-dom";
@@ -15,8 +16,34 @@ import { cn } from "@/lib/utils";
 import { startOfWeek, startOfMonth, isAfter, format } from "date-fns";
 
 type Period = "week" | "month" | "all";
+type SortDir = "asc" | "desc";
+type SortState = { key: string; dir: SortDir };
 
 const PAGE_SIZE = 10;
+
+const sortRows = (rows: any[], sort: SortState): any[] => {
+  return [...rows].sort((a, b) => {
+    const aVal = sort.key.includes('.') ? sort.key.split('.').reduce((o: any, k: string) => o?.[k], a) : a[sort.key];
+    const bVal = sort.key.includes('.') ? sort.key.split('.').reduce((o: any, k: string) => o?.[k], b) : b[sort.key];
+    if (aVal == null && bVal == null) return 0;
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+    const cmp = typeof aVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal));
+    return sort.dir === 'asc' ? cmp : -cmp;
+  });
+};
+
+const SortHeader = ({ label, sortKey, current, onSort, className }: { label: string; sortKey: string; current: SortState; onSort: (key: string) => void; className?: string }) => {
+  const active = current.key === sortKey;
+  return (
+    <th className={cn("py-2 px-3 cursor-pointer select-none hover:text-foreground transition-colors", className)} onClick={() => onSort(sortKey)}>
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active ? (current.dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+      </span>
+    </th>
+  );
+};
 
 const Paginator = ({ page, totalPages, onPrev, onNext }: { page: number; totalPages: number; onPrev: () => void; onNext: () => void }) => {
   if (totalPages <= 1) return null;
@@ -38,6 +65,13 @@ export default function Dashboard() {
   const [period, setPeriod] = useState<Period>("week");
   const [ordersPage, setOrdersPage] = useState(1);
   const [exceptionsPage, setExceptionsPage] = useState(1);
+  const [ordersSort, setOrdersSort] = useState<SortState>({ key: 'order_date', dir: 'asc' });
+  const [exceptionsSort, setExceptionsSort] = useState<SortState>({ key: 'orders.order_date', dir: 'asc' });
+
+  const toggleSort = (setter: React.Dispatch<React.SetStateAction<SortState>>, pageSetter: React.Dispatch<React.SetStateAction<number>>) => (key: string) => {
+    setter(prev => ({ key, dir: prev.key === key && prev.dir === 'asc' ? 'desc' : 'asc' }));
+    pageSetter(1);
+  };
 
   if (companyLoading || isLoading) return <div className="p-6"><LoadingSpinner message="Loading dashboard..." /></div>;
 
@@ -180,15 +214,15 @@ export default function Dashboard() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
-                    <th className="text-left py-2 px-3">Order</th>
-                    <th className="text-left py-2 px-3">Customer</th>
-                    <th className="text-left py-2 px-3">Date</th>
+                    <SortHeader label="Order" sortKey="order_number" current={ordersSort} onSort={toggleSort(setOrdersSort, setOrdersPage)} className="text-left" />
+                    <SortHeader label="Customer" sortKey="customer_name" current={ordersSort} onSort={toggleSort(setOrdersSort, setOrdersPage)} className="text-left" />
+                    <SortHeader label="Date" sortKey="order_date" current={ordersSort} onSort={toggleSort(setOrdersSort, setOrdersPage)} className="text-left" />
                     <th className="text-left py-2 px-3">Woo Status</th>
-                    <th className="text-right py-2 px-3">Total</th>
+                    <SortHeader label="Total" sortKey="total_amount" current={ordersSort} onSort={toggleSort(setOrdersSort, setOrdersPage)} className="text-right" />
                   </tr>
                 </thead>
                 <tbody>
-                  {stats!.todayProcessing.slice((ordersPage - 1) * PAGE_SIZE, ordersPage * PAGE_SIZE).map((o: any) => (
+                  {sortRows(stats!.todayProcessing, ordersSort).slice((ordersPage - 1) * PAGE_SIZE, ordersPage * PAGE_SIZE).map((o: any) => (
                     <tr key={o.id} onClick={() => navigate(`/orders/${o.order_number}`)} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors">
                       <td className="py-2 px-3 font-mono text-primary font-medium">{o.order_number}</td>
                       <td className="py-2 px-3 text-foreground">{o.customer_name || '—'}</td>
@@ -255,15 +289,15 @@ export default function Dashboard() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
-                    <th className="text-left py-2 px-3">Order</th>
-                    <th className="text-left py-2 px-3">Customer</th>
-                    <th className="text-left py-2 px-3">Order Date</th>
-                    <th className="text-left py-2 px-3">Reason</th>
+                    <SortHeader label="Order" sortKey="orders.order_number" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
+                    <SortHeader label="Customer" sortKey="orders.customer_name" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
+                    <SortHeader label="Order Date" sortKey="orders.order_date" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
+                    <SortHeader label="Reason" sortKey="reason" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
                     <th className="text-left py-2 px-3">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stats!.oldestExceptions.slice((exceptionsPage - 1) * PAGE_SIZE, exceptionsPage * PAGE_SIZE).map((exc: any) => {
+                  {sortRows(stats!.oldestExceptions, exceptionsSort).slice((exceptionsPage - 1) * PAGE_SIZE, exceptionsPage * PAGE_SIZE).map((exc: any) => {
                     const order = exc.orders;
                     return (
                       <tr key={exc.id} onClick={() => navigate('/exceptions')} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors">
