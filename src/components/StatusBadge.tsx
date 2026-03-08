@@ -24,6 +24,7 @@ const statusMap: Record<string, string> = {
   'label-created': 'status-muted',          // grey
   'label_created': 'status-muted',          // grey
   'not-shipped': 'status-exception',        // red
+  'other': 'status-exception',              // red — carrier alert, needs urgent attention
   'packing': 'status-processing',           // blue
   'ready-to-ship': 'status-processing',     // blue
 
