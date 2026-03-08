@@ -260,8 +260,8 @@ export function useDashboardStats() {
         db.from('manufacturer_manifests').select('*, manufacturer_manifest_items(*)').eq('company_id', cid).in('status', ['pending', 'shipped', 'in_transit']).order('eta', { ascending: true }),
         // All processing orders
         db.from('orders').select('id, order_number, customer_name, order_date, status, woo_status, total_amount').eq('company_id', cid).eq('status', 'processing').order('order_date', { ascending: false }),
-        // Today's shipments
-        db.from('shipments').select('id').eq('company_id', cid).gte('created_at', todayISO),
+        // Today's shipments (by shipped_date, not created_at — avoids inflating count on import days)
+        db.from('shipments').select('id').eq('company_id', cid).gte('shipped_date', todayISO),
         // Oldest open exceptions with linked order info
         db.from('exceptions').select('*, orders:linked_order_id(order_number, customer_name, order_date)').eq('company_id', cid).eq('status', 'open').order('created_at', { ascending: true }).limit(50),
         // Shipping urgent alerts — shipments with problematic carrier statuses
