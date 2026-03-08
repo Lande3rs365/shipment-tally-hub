@@ -526,3 +526,87 @@ function ParentGroup({
     </>
   );
 }
+
+const SKU_STRUCTURE = [
+  { prefix: 'SH-', label: 'Shafts', pattern: 'SH-{Material}-{Joint}-{Model}-{TipSize}', example: 'SH-CF-CL-RAD-125', hierarchy: 'Flat (standalone)' },
+  { prefix: 'PC-', label: 'Playing Cues', pattern: 'PC-{Tier}-{Model}[-{Wrap}]', example: 'PC-ASP-JF1010-NW', hierarchy: '3 segments = parent, 4 = variant' },
+  { prefix: 'BK-/JP-/BJ-', label: 'Break & Jump', pattern: 'BK-{Model}[-{Wrap}]', example: 'BK-JF-THUNDER-NW', hierarchy: 'Flat (standalone)' },
+  { prefix: 'CS-', label: 'Cases', pattern: 'CS-{Type}-{Model}-{Colour}-{Size}', example: 'CS-HC-CLASSIC-BLK-2X4', hierarchy: 'Flat (standalone)' },
+  { prefix: 'ACC-', label: 'Accessories', pattern: 'ACC-{SubCat}-{Item}[-{Variant}]', example: 'ACC-TIP-ULTRASKIN-M', hierarchy: 'Flat (standalone)' },
+  { prefix: 'APP-', label: 'Apparel', pattern: 'APP-{Gender}-{Design}[-{Size}]', example: 'APP-MJ-PATRIOT-USA-S', hierarchy: 'Size=PARENT → parent, else variant' },
+];
+
+function OverviewTab({ totalProducts, productsByCategory }: { totalProducts: number; productsByCategory: Record<string, Product[]> }) {
+  return (
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-2xl font-bold text-foreground">{totalProducts}</p>
+          <p className="text-xs text-muted-foreground">Total Products</p>
+        </div>
+        {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
+          const count = (productsByCategory[key] || []).length;
+          if (count === 0) return null;
+          return (
+            <div key={key} className="rounded-lg border border-border bg-card p-4">
+              <p className="text-2xl font-bold text-foreground">{count}</p>
+              <p className="text-xs text-muted-foreground">{label}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* SKU Framework Reference */}
+      <div className="rounded-lg border border-border bg-card">
+        <div className="px-4 py-3 border-b border-border">
+          <h2 className="font-semibold text-foreground">SKU Framework Reference</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">JFlowers SKU structure v4.0 — how product codes are constructed</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="text-left px-4 py-2 font-medium text-muted-foreground">Prefix</th>
+                <th className="text-left px-4 py-2 font-medium text-muted-foreground">Category</th>
+                <th className="text-left px-4 py-2 font-medium text-muted-foreground">Pattern</th>
+                <th className="text-left px-4 py-2 font-medium text-muted-foreground">Example</th>
+                <th className="text-left px-4 py-2 font-medium text-muted-foreground">Hierarchy</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {SKU_STRUCTURE.map(row => (
+                <tr key={row.prefix} className="hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-2.5 font-mono text-xs font-semibold text-primary">{row.prefix}</td>
+                  <td className="px-4 py-2.5 font-medium text-foreground">{row.label}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.pattern}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-foreground">{row.example}</td>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.hierarchy}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Row type legend */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h3 className="font-semibold text-foreground text-sm mb-3">Row Types</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex items-start gap-2">
+            <Badge variant="default" className="text-xs mt-0.5">parent</Badge>
+            <p className="text-xs text-muted-foreground">Base model without size/wrap variant. Groups child variants underneath.</p>
+          </div>
+          <div className="flex items-start gap-2">
+            <Badge variant="secondary" className="text-xs mt-0.5">variant</Badge>
+            <p className="text-xs text-muted-foreground">Specific wrap, size, or colour of a parent. Linked via parent_product_id.</p>
+          </div>
+          <div className="flex items-start gap-2">
+            <Badge variant="outline" className="text-xs mt-0.5">standalone</Badge>
+            <p className="text-xs text-muted-foreground">Single SKU with no parent/child relationship. Most shafts, cases, accessories.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
