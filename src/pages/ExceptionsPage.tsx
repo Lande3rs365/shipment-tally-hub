@@ -6,7 +6,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { useExceptions } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertTriangle, CheckCircle, Clock, Phone, Eye, ChevronDown } from "lucide-react";
+import { AlertTriangle, CheckCircle, Clock, Phone, Eye, Tag } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -29,6 +29,20 @@ const STATUS_OPTIONS = [
   { value: "refunded", label: "Refunded" },
 ];
 
+const REASON_OPTIONS = [
+  { value: "oos", label: "OOS", color: "bg-destructive/15 text-destructive" },
+  { value: "refund_req", label: "Refund Req", color: "bg-orange-500/15 text-orange-600" },
+  { value: "cancellation_req", label: "Cancellation Req", color: "bg-red-500/15 text-red-600" },
+  { value: "need_shipping_dets", label: "Need Shipping Dets", color: "bg-blue-500/15 text-blue-600" },
+  { value: "returned_item", label: "Returned Item", color: "bg-purple-500/15 text-purple-600" },
+  { value: "customs", label: "Customs", color: "bg-amber-500/15 text-amber-700" },
+  { value: "apac_order", label: "APAC Order", color: "bg-teal-500/15 text-teal-600" },
+  { value: "other", label: "Other", color: "bg-muted text-muted-foreground" },
+];
+
+const getReasonMeta = (reason: string | null) =>
+  REASON_OPTIONS.find(r => r.value === reason) || null;
+
 export default function ExceptionsPage() {
   const { currentCompany } = useCompany();
   const { data: exceptions = [], isLoading } = useExceptions();
@@ -44,7 +58,6 @@ export default function ExceptionsPage() {
   const handleStatusChange = async (exc: typeof exceptions[0], newWooStatus: string) => {
     setUpdatingId(exc.id);
     try {
-      // Update order woo_status
       if (exc.linked_order_id) {
         const { error: orderErr } = await db
           .from('orders')
@@ -53,7 +66,6 @@ export default function ExceptionsPage() {
         if (orderErr) throw orderErr;
       }
 
-      // If not on-hold, resolve the exception (moves it out of queue)
       if (newWooStatus !== 'on-hold') {
         const { error } = await db
           .from('exceptions')
@@ -68,12 +80,27 @@ export default function ExceptionsPage() {
 
       queryClient.invalidateQueries({ queryKey: ['exceptions'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
-      toast({ title: `Status updated to ${newWooStatus}` });
+      toast({ title: `Status → ${newWooStatus}` });
     } catch (err: any) {
       console.error('Failed to update status:', err);
       toast({ title: 'Failed to update', description: err.message, variant: 'destructive' });
     }
     setUpdatingId(null);
+  };
+
+  const handleReasonChange = async (excId: string, reason: string) => {
+    try {
+      const { error } = await db
+        .from('exceptions')
+        .update({ reason })
+        .eq('id', excId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      const label = REASON_OPTIONS.find(r => r.value === reason)?.label || reason;
+      toast({ title: `Reason set: ${label}` });
+    } catch (err: any) {
+      toast({ title: 'Failed to set reason', description: err.message, variant: 'destructive' });
+    }
   };
 
   const handleSnooze = async (id: string) => {
@@ -86,103 +113,130 @@ export default function ExceptionsPage() {
         .eq('id', id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['exceptions'] });
-      toast({ title: 'Snoozed 7 days', description: 'Follow-up date updated.' });
+      toast({ title: 'Snoozed 7 days' });
     } catch (err: any) {
-      console.error('Failed to snooze exception:', err);
       toast({ title: 'Failed to snooze', description: err.message, variant: 'destructive' });
     }
   };
 
   if (!currentCompany) return <EmptyState icon={AlertTriangle} title="No company selected" />;
 
-  const renderExceptionCard = (exc: typeof exceptions[0], isOnHold: boolean) => {
+  const renderExceptionRow = (exc: typeof exceptions[0], isOnHold: boolean) => {
     const followUpDue = exc.follow_up_due_at;
     const isOverdue = followUpDue && new Date(followUpDue) < new Date();
     const orderNumber = exc.orders?.order_number;
+    const reasonMeta = getReasonMeta(exc.reason);
 
     return (
       <div
         key={exc.id}
         className={cn(
-          "bg-card border rounded-lg p-4",
-          isOverdue ? "border-destructive" : "border-border"
+          "bg-card border rounded-lg px-4 py-3 grid gap-3",
+          "grid-cols-[1fr_auto]",
+          isOverdue ? "border-destructive/60" : "border-border"
         )}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3 min-w-0 flex-1">
-            <AlertTriangle className={cn(
-              "w-4 h-4 mt-0.5 shrink-0",
-              isOverdue ? "text-destructive" : isOnHold ? "text-warning" : "text-destructive"
-            )} />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="font-mono text-sm text-primary">{exc.title}</span>
-                <StatusBadge status={exc.severity} />
-                {!isOnHold && (
-                  <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded">
-                    {exc.exception_type}
-                  </span>
-                )}
-                {isOverdue && (
-                  <span className="text-xs text-destructive font-medium px-2 py-0.5 bg-destructive/10 rounded">
-                    Follow-up overdue
-                  </span>
-                )}
-                {followUpDue && !isOverdue && isOnHold && (
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Due {new Date(followUpDue).toLocaleDateString()}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-foreground">{exc.description}</p>
-              {orderNumber && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Order: <span className="font-mono text-primary">{orderNumber}</span>
-                  {exc.orders?.customer_name && ` · ${exc.orders.customer_name}`}
-                </p>
-              )}
-            </div>
+        {/* Left: info */}
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Reason pill — prominent */}
+          <div className="shrink-0 w-[120px]">
+            {reasonMeta ? (
+              <span className={cn("inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full", reasonMeta.color)}>
+                {reasonMeta.label}
+              </span>
+            ) : (
+              <Select onValueChange={(val) => handleReasonChange(exc.id, val)}>
+                <SelectTrigger className="h-7 w-[120px] text-xs border-dashed text-muted-foreground">
+                  <Tag className="w-3 h-3 mr-1 shrink-0" />
+                  <SelectValue placeholder="Set reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REASON_OPTIONS.map(r => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {/* View Order Button */}
-            {orderNumber && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to={`/orders/${orderNumber}`}>
-                  <Eye className="w-3.5 h-3.5 mr-1" /> View
+          {/* Order + Customer */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              {orderNumber ? (
+                <Link
+                  to={`/orders/${orderNumber}`}
+                  className="font-mono text-sm text-primary font-medium hover:underline"
+                >
+                  {orderNumber}
                 </Link>
-              </Button>
+              ) : (
+                <span className="font-mono text-sm text-primary">{exc.title}</span>
+              )}
+              {exc.orders?.customer_name && (
+                <span className="text-sm text-muted-foreground truncate">{exc.orders.customer_name}</span>
+              )}
+              <StatusBadge status={exc.severity} />
+              {isOverdue && (
+                <span className="text-xs text-destructive font-medium px-2 py-0.5 bg-destructive/10 rounded">
+                  Overdue
+                </span>
+              )}
+              {followUpDue && !isOverdue && isOnHold && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> {new Date(followUpDue).toLocaleDateString()}
+                </span>
+              )}
+            </div>
+            {exc.description && (
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{exc.description}</p>
             )}
+          </div>
+        </div>
 
-            {/* Snooze (on-hold only) */}
-            {isOnHold && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleSnooze(exc.id)}
-                className="text-muted-foreground"
-              >
-                Snooze 7d
-              </Button>
-            )}
+        {/* Right: actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {orderNumber && (
+            <Button variant="outline" size="sm" className="h-8" asChild>
+              <Link to={`/orders/${orderNumber}`}>
+                <Eye className="w-3.5 h-3.5 mr-1" /> View
+              </Link>
+            </Button>
+          )}
 
-            {/* Status Change Dropdown */}
-            <Select
-              onValueChange={(val) => handleStatusChange(exc, val)}
-              disabled={updatingId === exc.id}
-            >
-              <SelectTrigger className="w-[140px] h-9 text-xs">
-                <SelectValue placeholder="Change status" />
+          {isOnHold && (
+            <Button variant="ghost" size="sm" className="h-8 text-muted-foreground" onClick={() => handleSnooze(exc.id)}>
+              Snooze 7d
+            </Button>
+          )}
+
+          {/* Reason change (if already set) */}
+          {reasonMeta && (
+            <Select onValueChange={(val) => handleReasonChange(exc.id, val)}>
+              <SelectTrigger className="h-8 w-[110px] text-xs">
+                <SelectValue placeholder={reasonMeta.label} />
               </SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
+                {REASON_OPTIONS.map(r => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          )}
+
+          {/* Status change */}
+          <Select
+            onValueChange={(val) => handleStatusChange(exc, val)}
+            disabled={updatingId === exc.id}
+          >
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue placeholder="Change status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     );
@@ -205,10 +259,10 @@ export default function ExceptionsPage() {
           {onHold.length > 0 && (
             <div>
               <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5" /> On-Hold Orders — Follow Up Required
+                <Phone className="w-3.5 h-3.5" /> On-Hold Orders — Follow Up Required ({onHold.length})
               </h3>
-              <div className="space-y-3">
-                {onHold.map(exc => renderExceptionCard(exc, true))}
+              <div className="space-y-2">
+                {onHold.map(exc => renderExceptionRow(exc, true))}
               </div>
             </div>
           )}
@@ -217,10 +271,12 @@ export default function ExceptionsPage() {
           {other.length > 0 && (
             <div>
               {onHold.length > 0 && (
-                <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Other Exceptions</h3>
+                <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
+                  Other Exceptions ({other.length})
+                </h3>
               )}
-              <div className="space-y-3">
-                {other.map(exc => renderExceptionCard(exc, false))}
+              <div className="space-y-2">
+                {other.map(exc => renderExceptionRow(exc, false))}
               </div>
             </div>
           )}
@@ -228,20 +284,27 @@ export default function ExceptionsPage() {
           {/* Resolved */}
           {resolved.length > 0 && (
             <div>
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground pt-4 mb-3">Resolved</h3>
-              <div className="space-y-2">
-                {resolved.map(exc => (
-                  <div key={exc.id} className="bg-card border border-border/50 rounded-lg p-4 opacity-60">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-success" />
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground pt-4 mb-3">
+                Resolved ({resolved.length})
+              </h3>
+              <div className="space-y-1">
+                {resolved.map(exc => {
+                  const reasonMeta = getReasonMeta(exc.reason);
+                  return (
+                    <div key={exc.id} className="bg-card border border-border/50 rounded-lg px-4 py-2.5 opacity-50 flex items-center gap-3">
+                      <CheckCircle className="w-4 h-4 text-success shrink-0" />
+                      {reasonMeta && (
+                        <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", reasonMeta.color)}>
+                          {reasonMeta.label}
+                        </span>
+                      )}
                       <span className="font-mono text-sm">{exc.title}</span>
-                      <span className="text-xs text-muted-foreground">{exc.description}</span>
                       {exc.resolution_notes && (
                         <span className="text-xs text-muted-foreground ml-auto">{exc.resolution_notes}</span>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

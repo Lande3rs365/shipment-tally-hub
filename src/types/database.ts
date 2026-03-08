@@ -198,6 +198,7 @@ export interface Exception {
   status: string;
   title: string;
   description: string | null;
+  reason: string | null;
   linked_order_id: string | null;
   linked_shipment_id: string | null;
   linked_manifest_id: string | null;
