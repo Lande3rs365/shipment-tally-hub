@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useReturns, useOrders, useProducts, useStockLocations } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import StatusBadge from "@/components/StatusBadge";
 import EmptyState from "@/components/EmptyState";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -101,6 +101,27 @@ const reasonToStockOutcome: Record<ReturnReason, string> = {
   other: 'quarantine',
 };
 
+// ── Order status mapped from reason ──
+const reasonToOrderStatus: Record<ReturnReason, string> = {
+  exchanged: 'processing',
+  missing_item: 'processing',
+  incorrect_item: 'processing',
+  warranty_replacement: 'on-hold',
+  damaged_on_arrival: 'on-hold',
+  shipping: 'on-hold',
+  customs: 'on-hold',
+  other: 'on-hold',
+};
+
+// ── Exception reason mapped from return reason ──
+const reasonToExceptionReason: Record<string, string> = {
+  warranty_replacement: 'Returned Item',
+  damaged_on_arrival: 'Returned Item',
+  shipping: 'Returned Item',
+  customs: 'Customs',
+  other: 'Returned Item',
+};
+
 export default function ReturnsPage() {
   const [showNewReturn, setShowNewReturn] = useState(false);
   const [step, setStep] = useState<'form' | 'confirm' | 'done'>('form');
@@ -109,6 +130,7 @@ export default function ReturnsPage() {
   const [quantity, setQuantity] = useState(1);
   const [reason, setReason] = useState<ReturnReason | null>(null);
   const [notes, setNotes] = useState('');
+  const [duplicateWarning, setDuplicateWarning] = useState('');
 
   const { currentCompany } = useCompany();
   const { user } = useAuth();
@@ -122,6 +144,40 @@ export default function ReturnsPage() {
   const matchedItem = matchedOrder?.order_items?.find((i: any) => i.id === selectedItemId);
   const matchedProduct = matchedItem?.product_id ? products.find(p => p.id === matchedItem.product_id) : null;
 
+  // Auto-select if order has only one item
+  useEffect(() => {
+    if (matchedOrder?.order_items?.length === 1 && !selectedItemId) {
+      setSelectedItemId(matchedOrder.order_items[0].id);
+    }
+  }, [matchedOrder, selectedItemId]);
+
+  // Duplicate check when item is selected
+  useEffect(() => {
+    const checkDuplicate = async () => {
+      if (!matchedOrder || !selectedItemId || !currentCompany) {
+        setDuplicateWarning('');
+        return;
+      }
+      const item = matchedOrder.order_items?.find((i: any) => i.id === selectedItemId);
+      if (!item) return;
+
+      const { data } = await (supabase as any)
+        .from('returns')
+        .select('id, return_number')
+        .eq('company_id', currentCompany.id)
+        .eq('order_id', matchedOrder.id)
+        .eq('sku', item.sku || '')
+        .limit(1);
+
+      if (data && data.length > 0) {
+        setDuplicateWarning(`A return already exists for this item (${data[0].return_number}). Submitting will create an additional return.`);
+      } else {
+        setDuplicateWarning('');
+      }
+    };
+    checkDuplicate();
+  }, [selectedItemId, matchedOrder, currentCompany]);
+
   const canProceed = matchedOrder && selectedItemId && reason && quantity > 0;
 
   const handleReset = () => {
@@ -131,6 +187,7 @@ export default function ReturnsPage() {
     setQuantity(1);
     setReason(null);
     setNotes('');
+    setDuplicateWarning('');
   };
 
   const handleOpenNew = () => {
@@ -141,9 +198,11 @@ export default function ReturnsPage() {
   const handleConfirm = async () => {
     if (!reason || !matchedOrder || !matchedItem || !currentCompany) return;
     const stockOutcome = reasonToStockOutcome[reason];
+    const newOrderStatus = reasonToOrderStatus[reason];
     const primaryLocation = locations[0];
 
     try {
+      // 1. Insert return record
       const { data: returnRecord, error: retErr } = await (supabase as any).from('returns').insert({
         company_id: currentCompany.id,
         order_id: matchedOrder.id,
@@ -163,7 +222,8 @@ export default function ReturnsPage() {
 
       if (retErr) throw retErr;
 
-      if (matchedItem.product_id && stockOutcome !== 'return_to_customer') {
+      // 2. Stock movement + inventory update
+      if (matchedItem.product_id && stockOutcome !== 'return_to_client') {
         const direction = stockOutcome === 'write_off' ? 'OUT' : 'IN';
         const movementType = stockOutcome === 'restock' ? 'return_restock'
           : stockOutcome === 'quarantine' ? 'return_quarantine'
@@ -208,9 +268,51 @@ export default function ReturnsPage() {
         }
       }
 
+      // 3. Update order status
+      await (supabase as any)
+        .from('orders')
+        .update({ status: newOrderStatus, woo_status: newOrderStatus })
+        .eq('id', matchedOrder.id);
+
+      // 4. Insert order event audit log
+      await (supabase as any).from('order_events').insert({
+        order_id: matchedOrder.id,
+        event_type: 'return_processed',
+        description: `Return processed: ${reasonConfig[reason].label} — Qty ${quantity} — Stock: ${stockOutcome} — Order → ${newOrderStatus}`,
+        created_by: user?.id || null,
+        metadata: {
+          return_id: returnRecord?.id,
+          reason: reason,
+          stock_outcome: stockOutcome,
+          new_order_status: newOrderStatus,
+          quantity,
+        },
+      });
+
+      // 5. Auto-create exception for on_hold returns
+      if (newOrderStatus === 'on-hold') {
+        const exceptionReason = reasonToExceptionReason[reason] || 'Returned Item';
+        await (supabase as any).from('exceptions').insert({
+          company_id: currentCompany.id,
+          title: `Return: ${reasonConfig[reason].label} — ${matchedOrder.order_number}`,
+          exception_type: 'returned_item',
+          severity: reason === 'damaged_on_arrival' ? 'high' : 'medium',
+          status: 'open',
+          reason: exceptionReason,
+          description: `Return ${returnRecord?.id ? `RET-${returnRecord.id.slice(0, 8)}` : ''} requires approval. ${notes || ''}`.trim(),
+          linked_order_id: matchedOrder.id,
+          linked_return_id: returnRecord?.id || null,
+          created_by: user?.id || null,
+        });
+      }
+
+      // 6. Invalidate all related caches
       queryClient.invalidateQueries({ queryKey: ['returns'] });
       queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
       queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+
       setStep('done');
       toast.success('Return processed successfully');
     } catch (err) {
@@ -233,10 +335,8 @@ export default function ReturnsPage() {
         </Button>
       </div>
 
-      {/* Returns Table */}
       <ReturnsTable returns={returns} isLoading={isLoading} />
 
-      {/* New Return Dialog */}
       <Dialog open={showNewReturn} onOpenChange={setShowNewReturn}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -262,16 +362,21 @@ export default function ReturnsPage() {
               notes={notes}
               setNotes={setNotes}
               canProceed={!!canProceed}
+              duplicateWarning={duplicateWarning}
+              products={products}
               onSubmit={() => { if (canProceed) setStep('confirm'); }}
+              autoFocus={showNewReturn}
             />
           )}
           {step === 'confirm' && reason && matchedOrder && matchedItem && (
             <ConfirmStep
               matchedOrder={matchedOrder}
               matchedItem={matchedItem}
+              matchedProduct={matchedProduct}
               quantity={quantity}
               reason={reason}
               stockOutcome={reasonToStockOutcome[reason]}
+              orderStatus={reasonToOrderStatus[reason]}
               onBack={() => setStep('form')}
               onConfirm={handleConfirm}
             />
@@ -301,6 +406,7 @@ const ReturnsTable = ({ returns, isLoading }: { returns: any[]; isLoading: boole
                 <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Name</th>
                 <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Returned Date</th>
                 <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Reason</th>
+                <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Qty</th>
                 <th className="text-left py-2.5 px-3 font-medium text-muted-foreground">Action</th>
               </tr>
             </thead>
@@ -314,6 +420,9 @@ const ReturnsTable = ({ returns, isLoading }: { returns: any[]; isLoading: boole
                   </td>
                   <td className="py-2 px-3">
                     <Badge variant="outline" className="text-xs font-normal">{r.reason || '—'}</Badge>
+                  </td>
+                  <td className="py-2 px-3 text-center text-sm font-medium text-foreground">
+                    {r.return_qty ?? '—'}
                   </td>
                   <td className="py-2 px-3">
                     <StatusBadge status={r.stock_outcome?.replace(/_/g, ' ') || r.status} />
@@ -332,128 +441,161 @@ const ReturnsTable = ({ returns, isLoading }: { returns: any[]; isLoading: boole
 const ReturnForm = ({
   orderNumber, setOrderNumber, matchedOrder, selectedItemId, setSelectedItemId,
   quantity, setQuantity, matchedItem, matchedProduct, reason, setReason, notes, setNotes,
-  canProceed, onSubmit,
-}: any) => (
-  <div className="space-y-5">
-    {/* Order Number */}
-    <div className="space-y-1.5">
-      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Order Number</label>
-      <div className="relative">
-        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text" placeholder="e.g. WC-10421"
-          value={orderNumber}
-          onChange={e => { setOrderNumber(e.target.value); setSelectedItemId(''); }}
-          className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
-      {orderNumber && !matchedOrder && (
-        <p className="text-xs text-destructive">No order found for "{orderNumber}"</p>
-      )}
-      {matchedOrder && (
-        <p className="text-xs text-success">
-          Found: {matchedOrder.customer_name} · {matchedOrder.order_items?.length || 0} item(s)
-        </p>
-      )}
-    </div>
+  canProceed, duplicateWarning, products, onSubmit, autoFocus,
+}: any) => {
+  const inputRef = useRef<HTMLInputElement>(null);
 
-    {/* Select Item */}
-    {matchedOrder?.order_items && (
+  useEffect(() => {
+    if (autoFocus) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [autoFocus]);
+
+  const getProductName = (item: any) => {
+    if (!item?.product_id) return null;
+    const product = products?.find((p: any) => p.id === item.product_id);
+    return product?.name || null;
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Order Number */}
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Item</label>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Order Number</label>
+        <div className="relative">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            ref={inputRef}
+            type="text" placeholder="e.g. WC-10421"
+            value={orderNumber}
+            onChange={e => { setOrderNumber(e.target.value); setSelectedItemId(''); }}
+            className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+        {orderNumber && !matchedOrder && (
+          <p className="text-xs text-destructive">No order found for "{orderNumber}"</p>
+        )}
+        {matchedOrder && (
+          <p className="text-xs text-success">
+            Found: {matchedOrder.customer_name} · {matchedOrder.order_items?.length || 0} item(s)
+          </p>
+        )}
+      </div>
+
+      {/* Select Item */}
+      {matchedOrder?.order_items && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Item</label>
+          <div className="space-y-2">
+            {matchedOrder.order_items.map((item: any) => {
+              const productName = getProductName(item);
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => { setSelectedItemId(item.id); setQuantity(1); }}
+                  className={cn(
+                    "w-full flex items-center justify-between px-4 py-3 rounded-md border text-sm transition-colors",
+                    selectedItemId === item.id
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border bg-card text-muted-foreground hover:border-muted-foreground"
+                  )}
+                >
+                  <div className="text-left">
+                    <span className="font-mono text-xs">{item.sku || '—'}</span>
+                    {productName && <span className="ml-2 text-xs text-muted-foreground">{productName}</span>}
+                  </div>
+                  <span>Qty ordered: {item.quantity}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Product info inline */}
+      {matchedProduct && (
+        <div className="text-xs text-muted-foreground bg-muted/30 rounded-md px-3 py-2">
+          {matchedProduct.name} · {matchedProduct.sku} {matchedProduct.unit_cost != null && `· $${matchedProduct.unit_cost}`}
+        </div>
+      )}
+
+      {/* Duplicate warning */}
+      {duplicateWarning && (
+        <div className="flex items-start gap-2 bg-warning/10 border border-warning/30 rounded-md px-3 py-2 text-xs text-warning">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>{duplicateWarning}</span>
+        </div>
+      )}
+
+      {/* Return Quantity */}
+      {selectedItemId && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Return Quantity</label>
+          <input
+            type="number" min={1} max={matchedItem?.quantity || 1}
+            value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)}
+            className="w-24 bg-card border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+      )}
+
+      {/* Return Reason */}
+      {selectedItemId && (
         <div className="space-y-2">
-          {matchedOrder.order_items.map((item: any) => (
-            <button
-              key={item.id}
-              onClick={() => { setSelectedItemId(item.id); setQuantity(1); }}
-              className={cn(
-                "w-full flex items-center justify-between px-4 py-3 rounded-md border text-sm transition-colors",
-                selectedItemId === item.id
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-border bg-card text-muted-foreground hover:border-muted-foreground"
-              )}
-            >
-              <span className="font-mono text-xs">{item.sku || '—'}</span>
-              <span>Qty ordered: {item.quantity}</span>
-            </button>
-          ))}
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reason</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {(Object.entries(reasonConfig) as [ReturnReason, typeof reasonConfig[ReturnReason]][]).map(
+              ([key, cfg]) => (
+                <button
+                  key={key}
+                  onClick={() => setReason(key)}
+                  className={cn(
+                    "flex items-start gap-3 p-3 rounded-lg border-l-4 border text-left transition-all",
+                    cfg.colorClass,
+                    reason === key
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                      : "border-border bg-card hover:border-muted-foreground"
+                  )}
+                >
+                  <div className={cn("mt-0.5", reason === key ? "text-primary" : "text-muted-foreground")}>
+                    {cfg.icon}
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="text-sm font-medium text-foreground">{cfg.label}</div>
+                    <div className="text-xs text-muted-foreground">{cfg.description}</div>
+                  </div>
+                </button>
+              )
+            )}
+          </div>
         </div>
-      </div>
-    )}
+      )}
 
-    {/* Product info inline */}
-    {matchedProduct && (
-      <div className="text-xs text-muted-foreground bg-muted/30 rounded-md px-3 py-2">
-        {matchedProduct.name} · {matchedProduct.sku} {matchedProduct.unit_cost != null && `· $${matchedProduct.unit_cost}`}
-      </div>
-    )}
-
-    {/* Return Quantity */}
-    {selectedItemId && (
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Return Quantity</label>
-        <input
-          type="number" min={1} max={matchedItem?.quantity || 1}
-          value={quantity} onChange={e => setQuantity(parseInt(e.target.value) || 1)}
-          className="w-24 bg-card border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
-    )}
-
-    {/* Return Reason */}
-    {selectedItemId && (
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reason</label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {(Object.entries(reasonConfig) as [ReturnReason, typeof reasonConfig[ReturnReason]][]).map(
-            ([key, cfg]) => (
-              <button
-                key={key}
-                onClick={() => setReason(key)}
-                className={cn(
-                  "flex items-start gap-3 p-3 rounded-lg border-l-4 border text-left transition-all",
-                  cfg.colorClass,
-                  reason === key
-                    ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                    : "border-border bg-card hover:border-muted-foreground"
-                )}
-              >
-                <div className={cn("mt-0.5", reason === key ? "text-primary" : "text-muted-foreground")}>
-                  {cfg.icon}
-                </div>
-                <div className="space-y-0.5">
-                  <div className="text-sm font-medium text-foreground">{cfg.label}</div>
-                  <div className="text-xs text-muted-foreground">{cfg.description}</div>
-                </div>
-              </button>
-            )
-          )}
+      {/* Notes */}
+      {reason && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes (optional)</label>
+          <textarea
+            value={notes} onChange={e => setNotes(e.target.value)}
+            placeholder="Describe the item condition, packaging state, etc."
+            rows={3}
+            className="w-full bg-card border border-border rounded-md px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+          />
         </div>
-      </div>
-    )}
+      )}
 
-    {/* Notes */}
-    {reason && (
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes (optional)</label>
-        <textarea
-          value={notes} onChange={e => setNotes(e.target.value)}
-          placeholder="Describe the item condition, packaging state, etc."
-          rows={3}
-          className="w-full bg-card border border-border rounded-md px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-        />
-      </div>
-    )}
-
-    <Button onClick={onSubmit} disabled={!canProceed} className="w-full sm:w-auto">
-      Review Return <ArrowRight className="w-4 h-4" />
-    </Button>
-  </div>
-);
+      <Button onClick={onSubmit} disabled={!canProceed} className="w-full sm:w-auto">
+        Review Return <ArrowRight className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+};
 
 // ── Confirm Step ──
-const ConfirmStep = ({ matchedOrder, matchedItem, quantity, reason, stockOutcome, onBack, onConfirm }: any) => {
+const ConfirmStep = ({ matchedOrder, matchedItem, matchedProduct, quantity, reason, stockOutcome, orderStatus, onBack, onConfirm }: any) => {
   const cfg = reasonConfig[reason as ReturnReason];
+  const isOnHold = orderStatus === 'on-hold';
+
   return (
     <div className="space-y-5">
       <div className="bg-muted/30 border border-border rounded-lg p-5 space-y-3">
@@ -468,8 +610,11 @@ const ConfirmStep = ({ matchedOrder, matchedItem, quantity, reason, stockOutcome
             <p className="text-foreground">{matchedOrder.customer_name}</p>
           </div>
           <div>
-            <span className="text-muted-foreground">SKU</span>
-            <p className="font-mono text-foreground">{matchedItem.sku || '—'}</p>
+            <span className="text-muted-foreground">Item</span>
+            <p className="font-mono text-foreground">
+              {matchedItem.sku || '—'}
+              {matchedProduct && <span className="ml-1 text-xs text-muted-foreground font-sans">({matchedProduct.name})</span>}
+            </p>
           </div>
           <div>
             <span className="text-muted-foreground">Quantity</span>
@@ -483,8 +628,19 @@ const ConfirmStep = ({ matchedOrder, matchedItem, quantity, reason, stockOutcome
             </div>
           </div>
           <div>
-            <span className="text-muted-foreground">Action</span>
+            <span className="text-muted-foreground">Stock Action</span>
             <p className="text-foreground capitalize">{stockOutcome.replace(/_/g, ' ')}</p>
+          </div>
+          <div className="col-span-2">
+            <span className="text-muted-foreground">Order Status →</span>
+            <div className="mt-0.5">
+              <Badge variant={isOnHold ? 'destructive' : 'default'} className="text-xs">
+                {orderStatus.replace(/-/g, ' ')}
+              </Badge>
+              {isOnHold && (
+                <span className="ml-2 text-xs text-muted-foreground">Exception will be created for approval</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -507,7 +663,7 @@ const DoneStep = ({ onReset, onClose }: { onReset: () => void; onClose: () => vo
     <div>
       <h3 className="text-lg font-semibold text-foreground">Return Processed</h3>
       <p className="text-sm text-muted-foreground mt-1">
-        Return recorded and stock movement created. Inventory has been updated.
+        Return recorded, stock movement created, and order status updated.
       </p>
     </div>
     <div className="flex gap-3 justify-center">
