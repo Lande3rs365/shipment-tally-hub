@@ -253,9 +253,11 @@ export async function importMasterRows(rows: ParsedMasterRow[], companyId: strin
       });
 
       processed++;
+      onProgress?.(processed, errors);
     } catch (err) {
       console.error(`Error importing master row ${row.order_number}:`, err);
       errors++;
+      onProgress?.(processed, errors);
     }
   }
   return { processed, errors };
