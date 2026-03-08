@@ -156,95 +156,85 @@ export default function ExceptionsPage() {
       <div
         key={exc.id}
         className={cn(
-          "bg-card border rounded-lg px-4 py-3",
+          "bg-card border rounded-lg px-4 py-3 grid grid-cols-[minmax(180px,1fr)_90px_120px_120px_120px_auto_120px] items-center gap-3",
           isOverdue ? "border-destructive/60" : "border-border"
         )}
       >
-        {/* Row 1: Order#, Customer, Severity, Overdue badge */}
-        <div className="flex items-center justify-between gap-3 mb-1.5">
-          <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            {orderNumber ? (
-              <Link
-                to={`/orders/${orderNumber}`}
-                className={cn("font-mono text-sm font-semibold hover:underline", getOrderNumberColor(wooStatus))}
-              >
-                {orderNumber}
-              </Link>
-            ) : (
-              <span className="font-mono text-sm font-semibold text-foreground">{exc.title}</span>
-            )}
-            {exc.orders?.customer_name && (
-              <span className="text-sm text-muted-foreground">{exc.orders.customer_name}</span>
-            )}
-            <StatusBadge status={exc.severity} />
-            {isOverdue && (
-              <span className="text-xs text-destructive font-medium px-2 py-0.5 bg-destructive/10 rounded">
-                Overdue
-              </span>
-            )}
-          </div>
-
-          {/* Right side: actions */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Reason pill / setter */}
-            {reasonMeta ? (
-              <Select onValueChange={(val) => handleReasonChange(exc.id, val)}>
-                <SelectTrigger className="h-7 w-[120px] text-xs">
-                  <SelectValue placeholder={reasonMeta.label} />
-                </SelectTrigger>
-                <SelectContent>
-                  {REASON_OPTIONS.map(r => (
-                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Select onValueChange={(val) => handleReasonChange(exc.id, val)}>
-                <SelectTrigger className="h-7 w-[120px] text-xs">
-                  <SelectValue placeholder="Reason" />
-                </SelectTrigger>
-                <SelectContent>
-                  {REASON_OPTIONS.map(r => (
-                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            {orderNumber && (
-              <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-                <Link to={`/orders/${orderNumber}`}>
-                  <Eye className="w-3 h-3 mr-1" /> View
-                </Link>
-              </Button>
-            )}
-
-            <Select
-              onValueChange={(val) => handleStatusChange(exc, val)}
-              disabled={updatingId === exc.id}
+        {/* Col 1: Order# + Customer + Severity */}
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          {orderNumber ? (
+            <Link
+              to={`/orders/${orderNumber}`}
+              className={cn("font-mono text-sm font-semibold hover:underline", getOrderNumberColor(wooStatus))}
             >
-              <SelectTrigger className="h-7 w-[120px] text-xs">
-                <SelectValue placeholder="Change status" />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Row 2: Dates */}
-        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-          {orderDate && <span>Order date: {formatDate(orderDate)}</span>}
-          <span>Customer contacted: {formatDate(contactedDate)}</span>
-          {followUpDue && !isOverdue && isOnHold && (
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" /> Follow-up: {formatDate(followUpDue)}
+              {orderNumber}
+            </Link>
+          ) : (
+            <span className="font-mono text-sm font-semibold text-foreground">{exc.title}</span>
+          )}
+          {exc.orders?.customer_name && (
+            <span className="text-sm text-muted-foreground truncate">{exc.orders.customer_name}</span>
+          )}
+          <StatusBadge status={exc.severity} />
+          {isOverdue && (
+            <span className="text-xs text-destructive font-medium px-2 py-0.5 bg-destructive/10 rounded">
+              Overdue
             </span>
           )}
         </div>
+
+        {/* Col 2: Order date */}
+        <span className="text-xs text-muted-foreground">{orderDate ? formatDate(orderDate) : "—"}</span>
+
+        {/* Col 3: Customer contacted */}
+        <span className="text-xs text-muted-foreground">{formatDate(contactedDate)}</span>
+
+        {/* Col 4: Reason */}
+        <Select onValueChange={(val) => handleReasonChange(exc.id, val)}>
+          <SelectTrigger className="h-7 w-[120px] text-xs">
+            <SelectValue placeholder={reasonMeta ? reasonMeta.label : "Reason"} />
+          </SelectTrigger>
+          <SelectContent>
+            {REASON_OPTIONS.map(r => (
+              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Col 5: View */}
+        {orderNumber ? (
+          <Button variant="outline" size="sm" className="h-7 text-xs w-[120px]" asChild>
+            <Link to={`/orders/${orderNumber}`}>
+              <Eye className="w-3 h-3 mr-1" /> View
+            </Link>
+          </Button>
+        ) : (
+          <div className="w-[120px]" />
+        )}
+
+        {/* Col 6: Follow-up (if applicable) */}
+        <div className="text-xs text-muted-foreground">
+          {followUpDue && !isOverdue && isOnHold && (
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" /> {formatDate(followUpDue)}
+            </span>
+          )}
+        </div>
+
+        {/* Col 7: Status */}
+        <Select
+          onValueChange={(val) => handleStatusChange(exc, val)}
+          disabled={updatingId === exc.id}
+        >
+          <SelectTrigger className="h-7 w-[120px] text-xs">
+            <SelectValue placeholder="Change status" />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     );
   };
@@ -262,6 +252,16 @@ export default function ExceptionsPage() {
         <EmptyState icon={AlertTriangle} title="No exceptions" description="Exceptions will appear here when issues are detected." />
       ) : (
         <div className="space-y-6">
+          {/* Column headers */}
+          <div className="grid grid-cols-[minmax(180px,1fr)_90px_120px_120px_120px_auto_120px] items-center gap-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <span>Order</span>
+            <span>Order Date</span>
+            <span>Contacted</span>
+            <span>Reason</span>
+            <span></span>
+            <span></span>
+            <span>Status</span>
+          </div>
           {onHold.length > 0 && (
             <div>
               <h3 className="text-xs uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
