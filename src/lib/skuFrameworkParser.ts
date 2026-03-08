@@ -31,9 +31,51 @@ function cell(row: Record<string, any>, ...keys: string[]): string {
   return '';
 }
 
+/**
+ * Read a sheet as JSON, auto-detecting the header row by scanning for a target column name.
+ * This handles sheets that have title/banner rows before the actual column headers.
+ */
+function sheetToJsonAutoHeader(sheet: XLSX.WorkSheet, targetHeader: string): Record<string, any>[] {
+  // Get all rows as arrays first
+  const allRows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' });
+  
+  // Find the row index containing our target header
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(allRows.length, 10); i++) {
+    const row = allRows[i];
+    if (Array.isArray(row) && row.some(c => String(c).trim() === targetHeader)) {
+      headerIdx = i;
+      break;
+    }
+  }
+  
+  if (headerIdx === -1) {
+    // Fallback: try default behavior
+    return XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+  }
+  
+  // Use the detected header row as column names
+  const headers = allRows[headerIdx].map((h: any) => String(h).trim());
+  const result: Record<string, any>[] = [];
+  
+  for (let i = headerIdx + 1; i < allRows.length; i++) {
+    const row = allRows[i];
+    if (!Array.isArray(row)) continue;
+    const obj: Record<string, any> = {};
+    for (let j = 0; j < headers.length; j++) {
+      if (headers[j]) {
+        obj[headers[j]] = j < row.length ? row[j] : '';
+      }
+    }
+    result.push(obj);
+  }
+  
+  return result;
+}
+
 // Parse Sheet 2: Shafts
 function parseShafts(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
     const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
@@ -55,7 +97,7 @@ function parseShafts(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
 
 // Parse Sheet 3: Playing Cues (has Row Type column)
 function parsePlayingCues(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
     const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
@@ -82,7 +124,7 @@ function parsePlayingCues(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
 
 // Parse Sheet 4: Break & Jump
 function parseBreakJump(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
     const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
@@ -104,7 +146,7 @@ function parseBreakJump(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
 
 // Parse Sheet 5: Cases
 function parseCases(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
     const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
@@ -127,7 +169,7 @@ function parseCases(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
 
 // Parse Sheet 6: Accessories
 function parseAccessories(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
     const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
@@ -149,7 +191,7 @@ function parseAccessories(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
 
 // Parse Sheet 7: Apparel (has Size column = PARENT for parents)
 function parseApparel(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
-  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+  const rows = sheetToJsonAutoHeader(sheet, 'New SKU');
   const products: ParsedSkuProduct[] = [];
   for (const row of rows) {
     const sku = cell(row, 'New SKU', 'new_sku', 'SKU');
