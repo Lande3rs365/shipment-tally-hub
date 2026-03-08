@@ -404,7 +404,8 @@ export async function importMasterRows(rows: ParsedMasterRow[], companyId: strin
     description: `Order via Master XLSX import`, created_by: userId,
   })).filter(e => e.order_id);
   for (let i = 0; i < allEvents.length; i += BATCH_SIZE) {
-    await db.from("order_events").insert(allEvents.slice(i, i + BATCH_SIZE)).catch(() => {});
+    const { error: evtErr } = await db.from("order_events").insert(allEvents.slice(i, i + BATCH_SIZE));
+    if (evtErr) console.error("Event insert error:", evtErr);
   }
 
   // 6. Handle on-hold exceptions
