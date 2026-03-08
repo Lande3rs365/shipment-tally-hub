@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
 import type {
@@ -235,6 +235,59 @@ export function useDataIntakeLogs() {
       .order('created_at', { ascending: false });
     if (error) throw error;
     return data || [];
+  });
+}
+
+// ── Sync Products from Orders ──
+export function useSyncProducts() {
+  const { currentCompany } = useCompany();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const companyId = currentCompany!.id;
+
+      // Get all unique SKUs from order_items (via orders for this company)
+      const { data: orderItems, error: oiErr } = await db
+        .from('order_items')
+        .select('sku, order_id, orders!inner(company_id)')
+        .eq('orders.company_id', companyId)
+        .not('sku', 'is', null);
+      if (oiErr) throw oiErr;
+
+      const uniqueSkus = [...new Set((orderItems || []).map((oi: any) => oi.sku).filter(Boolean))] as string[];
+      if (uniqueSkus.length === 0) return { created: 0, skus: [] };
+
+      // Get existing product SKUs for this company
+      const { data: existing, error: pErr } = await db
+        .from('products')
+        .select('sku')
+        .eq('company_id', companyId);
+      if (pErr) throw pErr;
+
+      const existingSkus = new Set((existing || []).map((p: any) => p.sku));
+      const missing = uniqueSkus.filter(s => !existingSkus.has(s));
+
+      if (missing.length === 0) return { created: 0, skus: [] };
+
+      // Insert stub products in batches of 100
+      const BATCH = 100;
+      for (let i = 0; i < missing.length; i += BATCH) {
+        const batch = missing.slice(i, i + BATCH).map(sku => ({
+          company_id: companyId,
+          sku,
+          name: sku,
+        }));
+        const { error: insErr } = await db.from('products').insert(batch);
+        if (insErr) throw insErr;
+      }
+
+      return { created: missing.length, skus: missing };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    },
   });
 }
 

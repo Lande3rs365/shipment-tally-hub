@@ -24,6 +24,7 @@ import LoginPage from "@/pages/LoginPage";
 import SignupPage from "@/pages/SignupPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import AcceptInvitePage from "@/pages/AcceptInvitePage";
+import ProductsPage from "@/pages/ProductsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const App = () => (
                           <Route path="/supplier-manifests" element={<SupplierManifestsPage />} />
                           <Route path="/returns" element={<ReturnsPage />} />
                           <Route path="/exceptions" element={<ExceptionsPage />} />
+                          <Route path="/products" element={<ProductsPage />} />
                           <Route path="/exports" element={<ExportsPage />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
