@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import StatusBadge from "@/components/StatusBadge";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { ArrowLeft, Package, Clock, Truck, MapPin, Phone, Mail, MessageSquare, Send } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const db = supabase as any;
 
@@ -25,16 +26,18 @@ export default function OrderDetailPage() {
     if (!note.trim() || !order || !user) return;
     setSubmitting(true);
     try {
-      await db.from("order_events").insert({
+      const { error } = await db.from("order_events").insert({
         order_id: order.id,
         event_type: noteType,
         description: note.trim(),
         created_by: user.id,
       });
+      if (error) throw error;
       setNote("");
       queryClient.invalidateQueries({ queryKey: ["order_events", order.id] });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to add note:", err);
+      toast({ title: "Failed to save note", description: err.message, variant: "destructive" });
     }
     setSubmitting(false);
   };

@@ -71,15 +71,22 @@ export default function AcceptInvitePage() {
       toast({ title: "Welcome!", description: data.message });
       // Fetch the company and switch to it
       setTimeout(async () => {
-        const { data: companyData } = await db
-          .from("companies")
-          .select("*")
-          .eq("id", data.company_id)
-          .maybeSingle();
-        if (companyData) {
-          setCurrentCompany(companyData);
+        try {
+          const { data: companyData, error } = await db
+            .from("companies")
+            .select("*")
+            .eq("id", data.company_id)
+            .maybeSingle();
+          if (error) throw error;
+          if (companyData) {
+            setCurrentCompany(companyData);
+          }
+        } catch (err: any) {
+          console.error("Failed to load company after invite:", err);
+          toast({ title: "Could not load company", description: "You've joined, but please refresh the page.", variant: "destructive" });
+        } finally {
+          navigate("/", { replace: true });
         }
-        navigate("/", { replace: true });
       }, 1500);
     }
   };

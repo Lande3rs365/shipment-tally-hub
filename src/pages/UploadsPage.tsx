@@ -66,8 +66,16 @@ export default function UploadsPage() {
   const queryClient = useQueryClient();
   const { data: logs = [], isLoading } = useDataIntakeLogs();
 
+  const MAX_FILE_SIZE_MB = 20;
+
   const processFile = useCallback(async (file: File) => {
     if (!currentCompany || !user) return;
+
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      toast({ title: "File too large", description: `Maximum file size is ${MAX_FILE_SIZE_MB}MB. Please split your file and re-upload.`, variant: "destructive" });
+      return;
+    }
+
     const isXlsx = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
 
     setUploading({ fileName: file.name, status: "parsing", total: 0, processed: 0, errors: 0 });

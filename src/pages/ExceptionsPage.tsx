@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AlertTriangle, CheckCircle, Clock, Phone } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 export default function ExceptionsPage() {
   const { currentCompany } = useCompany();
@@ -21,21 +22,35 @@ export default function ExceptionsPage() {
   const other = active.filter(e => e.exception_type !== 'on_hold');
 
   const handleResolve = async (id: string) => {
-    await (supabase as any)
-      .from('exceptions')
-      .update({ status: 'resolved', resolved_at: new Date().toISOString() })
-      .eq('id', id);
-    queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+    try {
+      const { error } = await (supabase as any)
+        .from('exceptions')
+        .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      toast({ title: 'Exception resolved' });
+    } catch (err: any) {
+      console.error('Failed to resolve exception:', err);
+      toast({ title: 'Failed to resolve', description: err.message, variant: 'destructive' });
+    }
   };
 
   const handleSnooze = async (id: string) => {
-    const nextWeek = new Date();
-    nextWeek.setDate(nextWeek.getDate() + 7);
-    await (supabase as any)
-      .from('exceptions')
-      .update({ follow_up_due_at: nextWeek.toISOString() })
-      .eq('id', id);
-    queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+    try {
+      const nextWeek = new Date();
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      const { error } = await (supabase as any)
+        .from('exceptions')
+        .update({ follow_up_due_at: nextWeek.toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['exceptions'] });
+      toast({ title: 'Snoozed 7 days', description: 'Follow-up date updated.' });
+    } catch (err: any) {
+      console.error('Failed to snooze exception:', err);
+      toast({ title: 'Failed to snooze', description: err.message, variant: 'destructive' });
+    }
   };
 
   if (!currentCompany) return <EmptyState icon={AlertTriangle} title="No company selected" />;
