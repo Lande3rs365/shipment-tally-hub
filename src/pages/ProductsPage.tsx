@@ -181,6 +181,18 @@ export default function ProductsPage() {
     input.click();
   };
 
+  const handleImportBundled = async () => {
+    try {
+      const mod = await import("@/assets/JFlowers_SKU_Framework_v5.xlsx");
+      const resp = await fetch(mod.default);
+      const buffer = await resp.arrayBuffer();
+      const result = await importMutation.mutateAsync(buffer);
+      toast.success(`Imported ${result.created} products (${result.skipped} already existed).`);
+    } catch (err: any) {
+      toast.error("Import failed: " + (err.message || "Unknown error"));
+    }
+  };
+
   const startEdit = (p: Product) => {
     setEditing({ id: p.id, name: p.name || '', description: p.description || '' });
   };
