@@ -273,57 +273,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Active Exceptions */}
-      <div className="bg-card border border-border rounded-lg p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-destructive" />
-            Active Exceptions
-            <span className="text-xs font-normal text-muted-foreground">({stats?.exceptions || 0} total open)</span>
-          </h2>
-          <button onClick={() => navigate('/exceptions')} className="text-xs text-primary hover:underline flex items-center gap-1">View all <ArrowRight className="w-3 h-3" /></button>
-        </div>
-        {(stats?.oldestExceptions || []).length === 0 ? (
-          <p className="text-xs text-muted-foreground">No active exceptions 🎉</p>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
-                    <SortHeader label="Order" sortKey="orders.order_number" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
-                    <SortHeader label="Customer" sortKey="orders.customer_name" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
-                    <SortHeader label="Order Date" sortKey="orders.order_date" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
-                    <SortHeader label="Reason" sortKey="reason" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
-                    <th className="text-left py-2 px-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortRows(stats!.oldestExceptions, exceptionsSort).slice((exceptionsPage - 1) * PAGE_SIZE, exceptionsPage * PAGE_SIZE).map((exc: any) => {
-                    const order = exc.orders;
-                    return (
-                      <tr key={exc.id} onClick={() => navigate('/exceptions')} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors">
-                        <td className="py-2 px-3 font-mono text-primary font-medium">{order?.order_number || '—'}</td>
-                        <td className="py-2 px-3 text-foreground">{order?.customer_name || '—'}</td>
-                        <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{order?.order_date ? format(new Date(order.order_date), 'dd MMM yyyy') : '—'}</td>
-                        <td className="py-2 px-3">{exc.reason ? <StatusBadge status={exc.reason} /> : <span className="text-xs text-muted-foreground">—</span>}</td>
-                        <td className="py-2 px-3"><StatusBadge status={exc.status} /></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <Paginator
-              page={exceptionsPage}
-              totalPages={Math.ceil((stats?.oldestExceptions || []).length / PAGE_SIZE)}
-              onPrev={() => setExceptionsPage(p => Math.max(1, p - 1))}
-              onNext={() => setExceptionsPage(p => Math.min(Math.ceil((stats?.oldestExceptions || []).length / PAGE_SIZE), p + 1))}
-            />
-          </>
-        )}
-      </div>
-
       {/* Shipping Urgent Alerts */}
       <div className="bg-card border border-border rounded-lg p-5">
         <div className="flex items-center justify-between mb-4">
@@ -372,6 +321,57 @@ export default function Dashboard() {
               totalPages={Math.ceil((stats?.shippingAlerts || []).length / PAGE_SIZE)}
               onPrev={() => setAlertsPage(p => Math.max(1, p - 1))}
               onNext={() => setAlertsPage(p => Math.min(Math.ceil((stats?.shippingAlerts || []).length / PAGE_SIZE), p + 1))}
+            />
+          </>
+        )}
+      </div>
+
+      {/* Active Exceptions */}
+      <div className="bg-card border border-border rounded-lg p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            Active Exceptions
+            <span className="text-xs font-normal text-muted-foreground">({stats?.exceptions || 0} total open)</span>
+          </h2>
+          <button onClick={() => navigate('/exceptions')} className="text-xs text-primary hover:underline flex items-center gap-1">View all <ArrowRight className="w-3 h-3" /></button>
+        </div>
+        {(stats?.oldestExceptions || []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">No active exceptions 🎉</p>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-muted-foreground text-xs uppercase tracking-wider border-b border-border">
+                    <SortHeader label="Order" sortKey="orders.order_number" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
+                    <SortHeader label="Customer" sortKey="orders.customer_name" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
+                    <SortHeader label="Order Date" sortKey="orders.order_date" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
+                    <SortHeader label="Reason" sortKey="reason" current={exceptionsSort} onSort={toggleSort(setExceptionsSort, setExceptionsPage)} className="text-left" />
+                    <th className="text-left py-2 px-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortRows(stats!.oldestExceptions, exceptionsSort).slice((exceptionsPage - 1) * PAGE_SIZE, exceptionsPage * PAGE_SIZE).map((exc: any) => {
+                    const order = exc.orders;
+                    return (
+                      <tr key={exc.id} onClick={() => navigate('/exceptions')} className="border-b border-border/30 hover:bg-muted/20 cursor-pointer transition-colors">
+                        <td className="py-2 px-3 font-mono text-primary font-medium">{order?.order_number || '—'}</td>
+                        <td className="py-2 px-3 text-foreground">{order?.customer_name || '—'}</td>
+                        <td className="py-2 px-3 font-mono text-xs text-muted-foreground">{order?.order_date ? format(new Date(order.order_date), 'dd MMM yyyy') : '—'}</td>
+                        <td className="py-2 px-3">{exc.reason ? <StatusBadge status={exc.reason} /> : <span className="text-xs text-muted-foreground">—</span>}</td>
+                        <td className="py-2 px-3"><StatusBadge status={exc.status} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <Paginator
+              page={exceptionsPage}
+              totalPages={Math.ceil((stats?.oldestExceptions || []).length / PAGE_SIZE)}
+              onPrev={() => setExceptionsPage(p => Math.max(1, p - 1))}
+              onNext={() => setExceptionsPage(p => Math.min(Math.ceil((stats?.oldestExceptions || []).length / PAGE_SIZE), p + 1))}
             />
           </>
         )}
