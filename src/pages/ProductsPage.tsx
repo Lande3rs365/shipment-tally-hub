@@ -472,7 +472,7 @@ export default function ProductsPage() {
       {isLoading ? (
         <LoadingSpinner message="Loading products..." />
       ) : activeFilter === 'overview' ? (
-        <OverviewTab totalProducts={products.length} productsByCategory={productsByCategory} />
+        <OverviewTab productsByCategory={productsByCategory} />
       ) : (
         (() => {
           const tab = TABS.find(t => t.key === activeFilter);
@@ -587,15 +587,11 @@ const SKU_STRUCTURE = [
   { prefix: 'APP-', label: 'Apparel', pattern: 'APP-{Gender}-{Design}[-{Size}]', example: 'APP-MJ-PATRIOT-USA-S', hierarchy: 'Size=PARENT → parent, else variant' },
 ];
 
-function OverviewTab({ totalProducts, productsByCategory }: { totalProducts: number; productsByCategory: Record<string, Product[]> }) {
+function OverviewTab({ productsByCategory }: { productsByCategory: Record<string, Product[]> }) {
   return (
     <div className="space-y-6">
-      {/* Summary cards */}
+      {/* Category breakdown cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-2xl font-bold text-foreground">{totalProducts}</p>
-          <p className="text-xs text-muted-foreground">Total Products</p>
-        </div>
         {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
           const count = (productsByCategory[key] || []).length;
           if (count === 0) return null;
