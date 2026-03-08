@@ -202,6 +202,7 @@ export interface Exception {
   linked_shipment_id: string | null;
   linked_manifest_id: string | null;
   linked_return_id: string | null;
+  follow_up_due_at: string | null;
   resolved_at: string | null;
   resolved_by: string | null;
   resolution_notes: string | null;
