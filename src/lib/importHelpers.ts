@@ -195,7 +195,7 @@ export async function importShipments(shipments: ParsedShipment[], companyId: st
   return { processed, errors };
 }
 
-export async function importMasterRows(rows: ParsedMasterRow[], companyId: string, userId: string): Promise<ImportResult> {
+export async function importMasterRows(rows: ParsedMasterRow[], companyId: string, userId: string, onProgress?: ProgressCallback): Promise<ImportResult> {
   let processed = 0, errors = 0;
 
   for (const row of rows) {
