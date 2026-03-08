@@ -414,7 +414,7 @@ export default function ProductsPage() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard title="All SKUs" value={counts.total} icon={LayoutGrid} variant="info" />
         <KpiCard title="Shafts" value={counts.shafts} icon={Crosshair} variant="warning" />
         <KpiCard title="Playing Cues" value={counts.playingCues} icon={Swords} variant="success" />
