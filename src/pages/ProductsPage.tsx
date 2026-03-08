@@ -590,9 +590,6 @@ function ParentGroup({
         <td className="py-3 px-4 font-mono text-xs text-primary">{parent.sku}</td>
         <td className="py-3 px-4 text-foreground">
           {parent.name}
-          {variants.length > 0 && (
-            <Badge variant="secondary" className="ml-2 text-[10px]">{variants.length} variant{variants.length !== 1 ? 's' : ''}</Badge>
-          )}
         </td>
         {tab.columns.slice(2).map(col => (
           <td key={col.key} className="py-3 px-4 text-muted-foreground text-xs">{parent.description || '—'}</td>
