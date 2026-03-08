@@ -262,8 +262,8 @@ export function useDashboardStats() {
         db.from('orders').select('id, order_number, customer_name, order_date, status, woo_status, total_amount').eq('company_id', cid).eq('status', 'processing').order('order_date', { ascending: false }),
         // Today's shipments
         db.from('shipments').select('id').eq('company_id', cid).gte('created_at', todayISO),
-        // 10 oldest open exceptions with linked order info
-        db.from('exceptions').select('*, orders:linked_order_id(order_number, customer_name, order_date)').eq('company_id', cid).eq('status', 'open').order('created_at', { ascending: true }).limit(10),
+        // Oldest open exceptions with linked order info
+        db.from('exceptions').select('*, orders:linked_order_id(order_number, customer_name, order_date)').eq('company_id', cid).eq('status', 'open').order('created_at', { ascending: true }).limit(50),
       ]);
 
       const orderList = orders.data || [];
