@@ -228,6 +228,21 @@ export default function ProductsPage() {
 
   if (!currentCompany) return <EmptyState icon={Tag} title="No company selected" />;
 
+  const handleDeleteAll = async () => {
+    if (!currentCompany) return;
+    const count = products.length;
+    if (count === 0) { toast.info("No products to delete."); return; }
+    const confirmed = window.confirm(`Delete all ${count} products? This cannot be undone.`);
+    if (!confirmed) return;
+    try {
+      const { error } = await (supabase as any).from("products").delete().eq("company_id", currentCompany.id);
+      if (error) throw error;
+      toast.success(`Deleted ${count} products.`);
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    } catch (err: any) {
+      toast.error("Delete failed: " + (err.message || "Unknown error"));
+    }
+  };
 
   const renderTable = (tab: TabConfig) => {
     const tabProducts = getTabProducts(tab);
