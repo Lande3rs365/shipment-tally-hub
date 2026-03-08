@@ -237,8 +237,8 @@ export default function ExceptionsPage() {
 
         {/* Row 2: Dates */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-          <span>Customer contacted: {formatDate(contactedDate)}</span>
           {orderDate && <span>Order date: {formatDate(orderDate)}</span>}
+          <span>Customer contacted: {formatDate(contactedDate)}</span>
           {followUpDue && !isOverdue && isOnHold && (
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" /> Follow-up: {formatDate(followUpDue)}
