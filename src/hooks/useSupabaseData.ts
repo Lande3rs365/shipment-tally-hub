@@ -258,8 +258,8 @@ export function useDashboardStats() {
         db.from('exceptions').select('*').eq('company_id', cid).eq('status', 'open'),
         db.from('stock_movements').select('*').eq('company_id', cid).order('timestamp', { ascending: false }).limit(20),
         db.from('manufacturer_manifests').select('*, manufacturer_manifest_items(*)').eq('company_id', cid).in('status', ['pending', 'shipped', 'in_transit']).order('eta', { ascending: true }),
-        // Today's processing orders
-        db.from('orders').select('id, order_number, customer_name, order_date, status, woo_status, total_amount').eq('company_id', cid).eq('status', 'processing').gte('created_at', todayISO).order('created_at', { ascending: false }),
+        // All processing orders
+        db.from('orders').select('id, order_number, customer_name, order_date, status, woo_status, total_amount').eq('company_id', cid).eq('status', 'processing').order('order_date', { ascending: false }),
         // Today's shipments
         db.from('shipments').select('id').eq('company_id', cid).gte('created_at', todayISO),
         // 10 oldest open exceptions with linked order info
