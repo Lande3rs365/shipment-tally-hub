@@ -597,19 +597,6 @@ const SKU_STRUCTURE = [
 function OverviewTab({ productsByCategory }: { productsByCategory: Record<string, Product[]> }) {
   return (
     <div className="space-y-6">
-      {/* Category breakdown cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
-          const count = (productsByCategory[key] || []).length;
-          if (count === 0) return null;
-          return (
-            <div key={key} className="rounded-lg border border-border bg-card p-4">
-              <p className="text-2xl font-bold text-foreground">{count}</p>
-              <p className="text-xs text-muted-foreground">{label}</p>
-            </div>
-          );
-        })}
-      </div>
 
       {/* SKU Framework Reference */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
