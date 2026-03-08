@@ -16,8 +16,34 @@ import { cn } from "@/lib/utils";
 import { startOfWeek, startOfMonth, isAfter, format } from "date-fns";
 
 type Period = "week" | "month" | "all";
+type SortDir = "asc" | "desc";
+type SortState = { key: string; dir: SortDir };
 
 const PAGE_SIZE = 10;
+
+const sortRows = (rows: any[], sort: SortState): any[] => {
+  return [...rows].sort((a, b) => {
+    const aVal = sort.key.includes('.') ? sort.key.split('.').reduce((o: any, k: string) => o?.[k], a) : a[sort.key];
+    const bVal = sort.key.includes('.') ? sort.key.split('.').reduce((o: any, k: string) => o?.[k], b) : b[sort.key];
+    if (aVal == null && bVal == null) return 0;
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+    const cmp = typeof aVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal));
+    return sort.dir === 'asc' ? cmp : -cmp;
+  });
+};
+
+const SortHeader = ({ label, sortKey, current, onSort, className }: { label: string; sortKey: string; current: SortState; onSort: (key: string) => void; className?: string }) => {
+  const active = current.key === sortKey;
+  return (
+    <th className={cn("py-2 px-3 cursor-pointer select-none hover:text-foreground transition-colors", className)} onClick={() => onSort(sortKey)}>
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active ? (current.dir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+      </span>
+    </th>
+  );
+};
 
 const Paginator = ({ page, totalPages, onPrev, onNext }: { page: number; totalPages: number; onPrev: () => void; onNext: () => void }) => {
   if (totalPages <= 1) return null;
