@@ -3,6 +3,8 @@ import type { ParsedOrder, ParsedShipment, ParsedMasterRow } from "./csvParsers"
 
 const db = supabase as any;
 
+const BATCH_SIZE = 100;
+
 export interface ImportPreview {
   newOrders: number;
   updatedOrders: number;
@@ -19,270 +21,440 @@ export interface ImportResult {
 
 export type ProgressCallback = (processed: number, errors: number) => void;
 
+// ── Helpers ──
+
+/** Fetch all existing records in batches to avoid the 1000-row PostgREST limit */
+async function fetchAllExisting(table: string, companyId: string, column: string, values: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  for (let i = 0; i < values.length; i += BATCH_SIZE) {
+    const chunk = values.slice(i, i + BATCH_SIZE);
+    const { data } = await db.from(table).select(`id, ${column}`).eq("company_id", companyId).in(column, chunk);
+    for (const row of (data || [])) {
+      map.set(row[column], row.id);
+    }
+  }
+  return map;
+}
+
+/** Process items in chunks, calling fn for each chunk */
+async function processInChunks<T>(items: T[], chunkSize: number, fn: (chunk: T[]) => Promise<number>): Promise<{ processed: number; errors: number }> {
+  let processed = 0, errors = 0;
+  for (let i = 0; i < items.length; i += chunkSize) {
+    const chunk = items.slice(i, i + chunkSize);
+    try {
+      const count = await fn(chunk);
+      processed += count;
+    } catch (err) {
+      console.error("Chunk error:", err);
+      errors += chunk.length;
+    }
+  }
+  return { processed, errors };
+}
+
 // ── Preview: scan what will be created vs updated ──
 
 export async function previewWooCommerceImport(orders: ParsedOrder[], companyId: string): Promise<ImportPreview> {
   const orderNumbers = orders.map(o => o.order_number);
-  const { data: existing } = await db.from("orders").select("order_number").eq("company_id", companyId).in("order_number", orderNumbers);
-  const existingSet = new Set((existing || []).map((e: any) => e.order_number));
+  const existingMap = await fetchAllExisting("orders", companyId, "order_number", orderNumbers);
   const onHold = orders.filter(o => o.woo_status === "on-hold").length;
   return {
-    newOrders: orders.filter(o => !existingSet.has(o.order_number)).length,
-    updatedOrders: orders.filter(o => existingSet.has(o.order_number)).length,
-    newShipments: 0,
-    updatedShipments: 0,
-    onHoldOrders: onHold,
-    totalRows: orders.length,
+    newOrders: orders.filter(o => !existingMap.has(o.order_number)).length,
+    updatedOrders: orders.filter(o => existingMap.has(o.order_number)).length,
+    newShipments: 0, updatedShipments: 0, onHoldOrders: onHold, totalRows: orders.length,
   };
 }
 
 export async function previewShipmentImport(shipments: ParsedShipment[], companyId: string): Promise<ImportPreview> {
   const trackingNumbers = shipments.filter(s => s.tracking_number).map(s => s.tracking_number!);
-  const { data: existing } = await db.from("shipments").select("tracking_number").eq("company_id", companyId).in("tracking_number", trackingNumbers);
-  const existingSet = new Set((existing || []).map((e: any) => e.tracking_number));
+  const existingMap = await fetchAllExisting("shipments", companyId, "tracking_number", trackingNumbers);
   return {
-    newOrders: 0,
-    updatedOrders: 0,
-    newShipments: shipments.filter(s => !s.tracking_number || !existingSet.has(s.tracking_number)).length,
-    updatedShipments: shipments.filter(s => s.tracking_number && existingSet.has(s.tracking_number)).length,
-    onHoldOrders: 0,
-    totalRows: shipments.length,
+    newOrders: 0, updatedOrders: 0,
+    newShipments: shipments.filter(s => !s.tracking_number || !existingMap.has(s.tracking_number)).length,
+    updatedShipments: shipments.filter(s => s.tracking_number && existingMap.has(s.tracking_number)).length,
+    onHoldOrders: 0, totalRows: shipments.length,
   };
 }
 
 export async function previewMasterImport(rows: ParsedMasterRow[], companyId: string): Promise<ImportPreview> {
   const orderNumbers = rows.map(r => r.order_number);
-  const { data: existingOrders } = await db.from("orders").select("order_number").eq("company_id", companyId).in("order_number", orderNumbers);
-  const existingOrderSet = new Set((existingOrders || []).map((e: any) => e.order_number));
+  const existingOrderMap = await fetchAllExisting("orders", companyId, "order_number", orderNumbers);
 
   const trackingNumbers = rows.filter(r => r.tracking_number).map(r => r.tracking_number!);
-  let existingShipmentSet = new Set<string>();
-  if (trackingNumbers.length > 0) {
-    const { data: existingShipments } = await db.from("shipments").select("tracking_number").eq("company_id", companyId).in("tracking_number", trackingNumbers);
-    existingShipmentSet = new Set((existingShipments || []).map((e: any) => e.tracking_number));
-  }
+  const existingShipmentMap = trackingNumbers.length > 0
+    ? await fetchAllExisting("shipments", companyId, "tracking_number", trackingNumbers)
+    : new Map<string, string>();
 
   const onHold = rows.filter(r => r.woo_status === "on-hold").length;
   const rowsWithTracking = rows.filter(r => r.tracking_number);
 
   return {
-    newOrders: rows.filter(r => !existingOrderSet.has(r.order_number)).length,
-    updatedOrders: rows.filter(r => existingOrderSet.has(r.order_number)).length,
-    newShipments: rowsWithTracking.filter(r => !existingShipmentSet.has(r.tracking_number!)).length,
-    updatedShipments: rowsWithTracking.filter(r => existingShipmentSet.has(r.tracking_number!)).length,
-    onHoldOrders: onHold,
-    totalRows: rows.length,
+    newOrders: rows.filter(r => !existingOrderMap.has(r.order_number)).length,
+    updatedOrders: rows.filter(r => existingOrderMap.has(r.order_number)).length,
+    newShipments: rowsWithTracking.filter(r => !existingShipmentMap.has(r.tracking_number!)).length,
+    updatedShipments: rowsWithTracking.filter(r => existingShipmentMap.has(r.tracking_number!)).length,
+    onHoldOrders: onHold, totalRows: rows.length,
   };
 }
 
-// ── Import: actually write to DB ──
+// ── Import: batch write to DB ──
 
 export async function importWooCommerceOrders(orders: ParsedOrder[], companyId: string, userId: string, onProgress?: ProgressCallback): Promise<ImportResult> {
-  let processed = 0, errors = 0;
+  let totalProcessed = 0, totalErrors = 0;
 
-  for (const order of orders) {
+  // 1. Fetch all existing orders in one pass
+  const orderNumbers = orders.map(o => o.order_number);
+  const existingMap = await fetchAllExisting("orders", companyId, "order_number", orderNumbers);
+
+  const toInsert = orders.filter(o => !existingMap.has(o.order_number));
+  const toUpdate = orders.filter(o => existingMap.has(o.order_number));
+
+  // 2. Batch insert new orders
+  for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
+    const chunk = toInsert.slice(i, i + BATCH_SIZE);
     try {
-      const { data: existingOrder } = await db.from("orders").select("id").eq("company_id", companyId).eq("order_number", order.order_number).maybeSingle();
-      let orderId: string;
+      const { data: inserted, error } = await db.from("orders").insert(
+        chunk.map(o => ({
+          company_id: companyId, order_number: o.order_number, order_date: o.order_date,
+          status: o.status, woo_status: o.woo_status, customer_name: o.customer_name,
+          customer_email: o.customer_email, customer_phone: o.customer_phone,
+          shipping_address: o.shipping_address, total_amount: o.total_amount,
+          currency: o.currency, source: o.source,
+        }))
+      ).select("id, order_number");
+      if (error) throw error;
 
-      if (existingOrder) {
+      // Map new IDs back
+      for (const row of (inserted || [])) {
+        existingMap.set(row.order_number, row.id);
+      }
+
+      // Batch insert line items for this chunk
+      const allLineItems = chunk.flatMap(o => {
+        const orderId = existingMap.get(o.order_number);
+        return orderId ? o.line_items.map(li => ({
+          order_id: orderId, sku: li.sku, quantity: li.quantity, unit_price: li.unit_price, line_total: li.line_total,
+        })) : [];
+      });
+      if (allLineItems.length > 0) {
+        await db.from("order_items").insert(allLineItems);
+      }
+
+      // Batch insert events
+      const events = chunk.map(o => ({
+        order_id: existingMap.get(o.order_number), event_type: "import_created",
+        description: "Order created via WooCommerce CSV import", created_by: userId,
+      })).filter(e => e.order_id);
+      if (events.length > 0) {
+        await db.from("order_events").insert(events);
+      }
+
+      totalProcessed += chunk.length;
+    } catch (err) {
+      console.error("Batch insert error:", err);
+      totalErrors += chunk.length;
+    }
+    onProgress?.(totalProcessed, totalErrors);
+  }
+
+  // 3. Update existing orders one-by-one (updates can't be truly batched in PostgREST)
+  //    but we skip the existence check query since we already have the map
+  for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
+    const chunk = toUpdate.slice(i, i + BATCH_SIZE);
+    const updatePromises = chunk.map(async (order) => {
+      const orderId = existingMap.get(order.order_number)!;
+      try {
         await db.from("orders").update({
           order_date: order.order_date, status: order.status, woo_status: order.woo_status,
           customer_name: order.customer_name, customer_email: order.customer_email,
           customer_phone: order.customer_phone, shipping_address: order.shipping_address,
           total_amount: order.total_amount, currency: order.currency, source: order.source,
-        }).eq("id", existingOrder.id);
-        orderId = existingOrder.id;
+        }).eq("id", orderId);
+
+        // Replace line items
         await db.from("order_items").delete().eq("order_id", orderId);
-      } else {
-        const { data: newOrder, error: orderErr } = await db.from("orders").insert({
-          company_id: companyId, order_number: order.order_number, order_date: order.order_date,
-          status: order.status, woo_status: order.woo_status, customer_name: order.customer_name,
-          customer_email: order.customer_email, customer_phone: order.customer_phone,
-          shipping_address: order.shipping_address, total_amount: order.total_amount,
-          currency: order.currency, source: order.source,
-        }).select("id").single();
-        if (orderErr) throw orderErr;
-        orderId = newOrder.id;
+        if (order.line_items.length > 0) {
+          await db.from("order_items").insert(order.line_items.map(li => ({
+            order_id: orderId, sku: li.sku, quantity: li.quantity, unit_price: li.unit_price, line_total: li.line_total,
+          })));
+        }
+
+        return true;
+      } catch (err) {
+        console.error(`Error updating order ${order.order_number}:`, err);
+        return false;
       }
+    });
 
-      if (order.line_items.length > 0) {
-        await db.from("order_items").insert(order.line_items.map(li => ({
-          order_id: orderId, sku: li.sku, quantity: li.quantity, unit_price: li.unit_price, line_total: li.line_total,
-        })));
-      }
+    const results = await Promise.all(updatePromises);
+    const succeeded = results.filter(Boolean).length;
+    totalProcessed += succeeded;
+    totalErrors += results.length - succeeded;
 
-      // Auto-create exception for on-hold orders
-      if (order.woo_status === "on-hold") {
-        await createOnHoldException(companyId, orderId, order.order_number, order.customer_name, userId);
-      }
-
-      // Log event
-      await db.from("order_events").insert({
-        order_id: orderId, event_type: existingOrder ? "import_updated" : "import_created",
-        description: `Order ${existingOrder ? "updated" : "created"} via WooCommerce CSV import`,
-        created_by: userId,
-      });
-
-      processed++;
-      onProgress?.(processed, errors);
-    } catch (err) {
-      console.error(`Error importing order ${order.order_number}:`, err);
-      errors++;
-      onProgress?.(processed, errors);
+    // Batch insert events for updates
+    const eventRows = chunk.map(o => ({
+      order_id: existingMap.get(o.order_number), event_type: "import_updated",
+      description: "Order updated via WooCommerce CSV import", created_by: userId,
+    })).filter(e => e.order_id);
+    if (eventRows.length > 0) {
+      await db.from("order_events").insert(eventRows).catch(() => {});
     }
+
+    onProgress?.(totalProcessed, totalErrors);
   }
-  return { processed, errors };
+
+  // 4. Handle on-hold exceptions in batch
+  const onHoldOrders = orders.filter(o => o.woo_status === "on-hold");
+  if (onHoldOrders.length > 0) {
+    await createOnHoldExceptions(companyId, onHoldOrders.map(o => ({
+      orderId: existingMap.get(o.order_number)!,
+      orderNumber: o.order_number,
+      customerName: o.customer_name,
+    })), userId);
+  }
+
+  return { processed: totalProcessed, errors: totalErrors };
 }
 
 export async function importShipments(shipments: ParsedShipment[], companyId: string, userId: string, onProgress?: ProgressCallback): Promise<ImportResult> {
-  let processed = 0, errors = 0;
+  let totalProcessed = 0, totalErrors = 0;
 
-  for (const shipment of shipments) {
+  // 1. Fetch existing orders and shipments in parallel
+  const orderNumbers = [...new Set(shipments.filter(s => s.order_number).map(s => s.order_number!))];
+  const trackingNumbers = [...new Set(shipments.filter(s => s.tracking_number).map(s => s.tracking_number!))];
+
+  const [existingOrderMap, existingShipmentMap] = await Promise.all([
+    fetchAllExisting("orders", companyId, "order_number", orderNumbers),
+    trackingNumbers.length > 0 ? fetchAllExisting("shipments", companyId, "tracking_number", trackingNumbers) : Promise.resolve(new Map<string, string>()),
+  ]);
+
+  // 2. Identify orders that need to be created as placeholders
+  const missingOrderNumbers = [...new Set(
+    shipments.filter(s => s.order_number && !existingOrderMap.has(s.order_number)).map(s => s.order_number!)
+  )];
+
+  // Batch create placeholder orders
+  for (let i = 0; i < missingOrderNumbers.length; i += BATCH_SIZE) {
+    const chunk = missingOrderNumbers.slice(i, i + BATCH_SIZE);
+    // Find first shipment for each order number to get customer info
+    const orderData = chunk.map(on => {
+      const s = shipments.find(sh => sh.order_number === on)!;
+      return {
+        company_id: companyId, order_number: on, order_date: s.order_date,
+        status: "processing", woo_status: "processing",
+        customer_name: s.customer_name, customer_email: s.customer_email,
+        total_amount: s.order_total, source: "pirate_ship",
+      };
+    });
     try {
-      // Find or create order
-      let orderId: string;
-      if (shipment.order_number) {
-        const { data: order } = await db.from("orders").select("id").eq("company_id", companyId).eq("order_number", shipment.order_number).maybeSingle();
-        if (order) {
-          orderId = order.id;
-        } else {
-          const { data: newOrder, error: oErr } = await db.from("orders").insert({
-            company_id: companyId, order_number: shipment.order_number,
-            order_date: shipment.order_date, status: "processing", woo_status: "processing",
-            customer_name: shipment.customer_name, customer_email: shipment.customer_email,
-            total_amount: shipment.order_total, source: "pirate_ship",
-          }).select("id").single();
-          if (oErr) throw oErr;
-          orderId = newOrder.id;
-        }
-      } else {
-        // No order number — skip or create placeholder
-        processed++;
-        onProgress?.(processed, errors);
-        continue;
+      const { data: inserted } = await db.from("orders").insert(orderData).select("id, order_number");
+      for (const row of (inserted || [])) {
+        existingOrderMap.set(row.order_number, row.id);
       }
-
-      // Check existing shipment by tracking number
-      if (shipment.tracking_number) {
-        const { data: existing } = await db.from("shipments").select("id").eq("company_id", companyId).eq("tracking_number", shipment.tracking_number).maybeSingle();
-        if (existing) {
-          await db.from("shipments").update({
-            status: shipment.status, shipped_date: shipment.shipped_date,
-            delivered_date: shipment.delivered_date, shipping_cost: shipment.shipping_cost,
-            carrier: shipment.carrier, weight_grams: shipment.weight_grams, order_id: orderId,
-          }).eq("id", existing.id);
-          processed++;
-          onProgress?.(processed, errors);
-          continue;
-        }
-      }
-
-      await db.from("shipments").insert({
-        company_id: companyId, order_id: orderId, tracking_number: shipment.tracking_number,
-        carrier: shipment.carrier, status: shipment.status, shipped_date: shipment.shipped_date,
-        delivered_date: shipment.delivered_date, shipping_cost: shipment.shipping_cost,
-        weight_grams: shipment.weight_grams,
-      });
-      processed++;
-      onProgress?.(processed, errors);
     } catch (err) {
-      console.error(`Error importing shipment for order ${shipment.order_number}:`, err);
-      errors++;
-      onProgress?.(processed, errors);
+      console.error("Batch order placeholder error:", err);
     }
   }
-  return { processed, errors };
+
+  // 3. Split shipments into new vs update
+  const newShipments = shipments.filter(s => !s.tracking_number || !existingShipmentMap.has(s.tracking_number));
+  const updateShipments = shipments.filter(s => s.tracking_number && existingShipmentMap.has(s.tracking_number));
+
+  // 4. Batch insert new shipments
+  for (let i = 0; i < newShipments.length; i += BATCH_SIZE) {
+    const chunk = newShipments.slice(i, i + BATCH_SIZE);
+    const insertData = chunk
+      .filter(s => s.order_number && existingOrderMap.has(s.order_number))
+      .map(s => ({
+        company_id: companyId, order_id: existingOrderMap.get(s.order_number!)!,
+        tracking_number: s.tracking_number, carrier: s.carrier, status: s.status,
+        shipped_date: s.shipped_date, delivered_date: s.delivered_date,
+        shipping_cost: s.shipping_cost, weight_grams: s.weight_grams,
+      }));
+    if (insertData.length > 0) {
+      try {
+        await db.from("shipments").insert(insertData);
+        totalProcessed += insertData.length;
+      } catch (err) {
+        console.error("Batch shipment insert error:", err);
+        totalErrors += insertData.length;
+      }
+    }
+    // Count skipped (no order_number)
+    totalProcessed += chunk.length - insertData.length;
+    onProgress?.(totalProcessed, totalErrors);
+  }
+
+  // 5. Parallel update existing shipments
+  for (let i = 0; i < updateShipments.length; i += BATCH_SIZE) {
+    const chunk = updateShipments.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(chunk.map(async (s) => {
+      try {
+        const orderId = s.order_number ? existingOrderMap.get(s.order_number) : undefined;
+        await db.from("shipments").update({
+          status: s.status, shipped_date: s.shipped_date, delivered_date: s.delivered_date,
+          shipping_cost: s.shipping_cost, carrier: s.carrier, weight_grams: s.weight_grams,
+          ...(orderId ? { order_id: orderId } : {}),
+        }).eq("id", existingShipmentMap.get(s.tracking_number!)!);
+        return true;
+      } catch { return false; }
+    }));
+    totalProcessed += results.filter(Boolean).length;
+    totalErrors += results.filter(r => !r).length;
+    onProgress?.(totalProcessed, totalErrors);
+  }
+
+  return { processed: totalProcessed, errors: totalErrors };
 }
 
 export async function importMasterRows(rows: ParsedMasterRow[], companyId: string, userId: string, onProgress?: ProgressCallback): Promise<ImportResult> {
-  let processed = 0, errors = 0;
+  let totalProcessed = 0, totalErrors = 0;
 
-  for (const row of rows) {
+  // 1. Fetch existing orders and shipments
+  const orderNumbers = rows.map(r => r.order_number);
+  const trackingNumbers = [...new Set(rows.filter(r => r.tracking_number).map(r => r.tracking_number!))];
+
+  const [existingOrderMap, existingShipmentMap] = await Promise.all([
+    fetchAllExisting("orders", companyId, "order_number", orderNumbers),
+    trackingNumbers.length > 0 ? fetchAllExisting("shipments", companyId, "tracking_number", trackingNumbers) : Promise.resolve(new Map<string, string>()),
+  ]);
+
+  const toInsertOrders = rows.filter(r => !existingOrderMap.has(r.order_number));
+  const toUpdateOrders = rows.filter(r => existingOrderMap.has(r.order_number));
+
+  // 2. Batch insert new orders
+  for (let i = 0; i < toInsertOrders.length; i += BATCH_SIZE) {
+    const chunk = toInsertOrders.slice(i, i + BATCH_SIZE);
     try {
-      // Upsert order
-      const { data: existingOrder } = await db.from("orders").select("id").eq("company_id", companyId).eq("order_number", row.order_number).maybeSingle();
-      let orderId: string;
-
-      if (existingOrder) {
-        await db.from("orders").update({
-          order_date: row.order_date, status: row.status, woo_status: row.woo_status,
-          customer_name: row.customer_name, total_amount: row.total_amount, source: "woocommerce",
-        }).eq("id", existingOrder.id);
-        orderId = existingOrder.id;
-      } else {
-        const { data: newOrder, error: oErr } = await db.from("orders").insert({
-          company_id: companyId, order_number: row.order_number, order_date: row.order_date,
-          status: row.status, woo_status: row.woo_status, customer_name: row.customer_name,
-          total_amount: row.total_amount, source: "woocommerce",
-        }).select("id").single();
-        if (oErr) throw oErr;
-        orderId = newOrder.id;
+      const { data: inserted, error } = await db.from("orders").insert(
+        chunk.map(r => ({
+          company_id: companyId, order_number: r.order_number, order_date: r.order_date,
+          status: r.status, woo_status: r.woo_status, customer_name: r.customer_name,
+          total_amount: r.total_amount, source: "woocommerce",
+        }))
+      ).select("id, order_number");
+      if (error) throw error;
+      for (const row of (inserted || [])) {
+        existingOrderMap.set(row.order_number, row.id);
       }
-
-      // On-hold → exception
-      if (row.woo_status === "on-hold") {
-        await createOnHoldException(companyId, orderId, row.order_number, row.customer_name, userId);
-      }
-
-      // Upsert shipment if tracking number exists
-      if (row.tracking_number) {
-        const { data: existingShipment } = await db.from("shipments").select("id").eq("company_id", companyId).eq("tracking_number", row.tracking_number).maybeSingle();
-
-        const shipmentData = {
-          carrier: row.carrier, status: row.tracking_status,
-          shipped_date: row.tracking_status !== "label_created" ? row.tracking_date : null,
-          delivered_date: row.tracking_status === "delivered" ? row.tracking_date : null,
-          shipping_cost: row.shipping_cost,
-        };
-
-        if (existingShipment) {
-          await db.from("shipments").update(shipmentData).eq("id", existingShipment.id);
-        } else {
-          await db.from("shipments").insert({
-            ...shipmentData, company_id: companyId, order_id: orderId, tracking_number: row.tracking_number,
-          });
-        }
-      }
-
-      // Log event
-      await db.from("order_events").insert({
-        order_id: orderId, event_type: existingOrder ? "import_updated" : "import_created",
-        description: `Order ${existingOrder ? "updated" : "created"} via Master XLSX import`,
-        created_by: userId,
-      });
-
-      processed++;
-      onProgress?.(processed, errors);
+      totalProcessed += chunk.length;
     } catch (err) {
-      console.error(`Error importing master row ${row.order_number}:`, err);
-      errors++;
-      onProgress?.(processed, errors);
+      console.error("Batch master order insert error:", err);
+      totalErrors += chunk.length;
+    }
+    onProgress?.(totalProcessed, totalErrors);
+  }
+
+  // 3. Parallel update existing orders
+  for (let i = 0; i < toUpdateOrders.length; i += BATCH_SIZE) {
+    const chunk = toUpdateOrders.slice(i, i + BATCH_SIZE);
+    const results = await Promise.all(chunk.map(async (r) => {
+      try {
+        await db.from("orders").update({
+          order_date: r.order_date, status: r.status, woo_status: r.woo_status,
+          customer_name: r.customer_name, total_amount: r.total_amount, source: "woocommerce",
+        }).eq("id", existingOrderMap.get(r.order_number)!);
+        return true;
+      } catch { return false; }
+    }));
+    totalProcessed += results.filter(Boolean).length;
+    totalErrors += results.filter(r => !r).length;
+    onProgress?.(totalProcessed, totalErrors);
+  }
+
+  // 4. Batch upsert shipments
+  const rowsWithTracking = rows.filter(r => r.tracking_number && existingOrderMap.has(r.order_number));
+  const newShipmentRows = rowsWithTracking.filter(r => !existingShipmentMap.has(r.tracking_number!));
+  const updateShipmentRows = rowsWithTracking.filter(r => existingShipmentMap.has(r.tracking_number!));
+
+  for (let i = 0; i < newShipmentRows.length; i += BATCH_SIZE) {
+    const chunk = newShipmentRows.slice(i, i + BATCH_SIZE);
+    try {
+      await db.from("shipments").insert(chunk.map(r => ({
+        company_id: companyId, order_id: existingOrderMap.get(r.order_number)!,
+        tracking_number: r.tracking_number, carrier: r.carrier, status: r.tracking_status,
+        shipped_date: r.tracking_status !== "label_created" ? r.tracking_date : null,
+        delivered_date: r.tracking_status === "delivered" ? r.tracking_date : null,
+        shipping_cost: r.shipping_cost,
+      })));
+    } catch (err) {
+      console.error("Batch shipment insert error:", err);
     }
   }
-  return { processed, errors };
+
+  for (let i = 0; i < updateShipmentRows.length; i += BATCH_SIZE) {
+    const chunk = updateShipmentRows.slice(i, i + BATCH_SIZE);
+    await Promise.all(chunk.map(async (r) => {
+      try {
+        await db.from("shipments").update({
+          carrier: r.carrier, status: r.tracking_status,
+          shipped_date: r.tracking_status !== "label_created" ? r.tracking_date : null,
+          delivered_date: r.tracking_status === "delivered" ? r.tracking_date : null,
+          shipping_cost: r.shipping_cost,
+        }).eq("id", existingShipmentMap.get(r.tracking_number!)!);
+      } catch {}
+    }));
+  }
+
+  // 5. Batch insert order events
+  const allEvents = rows.map(r => ({
+    order_id: existingOrderMap.get(r.order_number),
+    event_type: toUpdateOrders.some(u => u.order_number === r.order_number) ? "import_updated" : "import_created",
+    description: `Order via Master XLSX import`, created_by: userId,
+  })).filter(e => e.order_id);
+  for (let i = 0; i < allEvents.length; i += BATCH_SIZE) {
+    await db.from("order_events").insert(allEvents.slice(i, i + BATCH_SIZE)).catch(() => {});
+  }
+
+  // 6. Handle on-hold exceptions
+  const onHoldRows = rows.filter(r => r.woo_status === "on-hold" && existingOrderMap.has(r.order_number));
+  if (onHoldRows.length > 0) {
+    await createOnHoldExceptions(companyId, onHoldRows.map(r => ({
+      orderId: existingOrderMap.get(r.order_number)!,
+      orderNumber: r.order_number,
+      customerName: r.customer_name,
+    })), userId);
+  }
+
+  return { processed: totalProcessed, errors: totalErrors };
 }
 
-// ── On-hold exception helper ──
+// ── On-hold exception helper (batched) ──
 
-async function createOnHoldException(companyId: string, orderId: string, orderNumber: string, customerName: string | null, userId: string) {
-  // Check if an open exception already exists for this order
-  const { data: existing } = await db.from("exceptions").select("id").eq("company_id", companyId).eq("linked_order_id", orderId).eq("exception_type", "on_hold").in("status", ["open", "investigating"]).maybeSingle();
+async function createOnHoldExceptions(
+  companyId: string,
+  orders: { orderId: string; orderNumber: string; customerName: string | null }[],
+  userId: string,
+) {
+  if (orders.length === 0) return;
 
-  if (!existing) {
-    const nextWeek = new Date();
-    nextWeek.setDate(nextWeek.getDate() + 7);
+  // Fetch existing open exceptions for these orders
+  const orderIds = orders.map(o => o.orderId);
+  const existingExceptions = new Set<string>();
+  for (let i = 0; i < orderIds.length; i += BATCH_SIZE) {
+    const chunk = orderIds.slice(i, i + BATCH_SIZE);
+    const { data } = await db.from("exceptions").select("linked_order_id")
+      .eq("company_id", companyId).eq("exception_type", "on_hold")
+      .in("status", ["open", "investigating"]).in("linked_order_id", chunk);
+    for (const row of (data || [])) {
+      existingExceptions.add(row.linked_order_id);
+    }
+  }
 
-    await db.from("exceptions").insert({
-      company_id: companyId,
-      exception_type: "on_hold",
-      severity: "medium",
-      status: "open",
-      title: `On-hold: ${orderNumber}`,
-      description: `Order ${orderNumber}${customerName ? ` (${customerName})` : ""} is on-hold. Customer needs to be contacted / department chased for solution.`,
-      linked_order_id: orderId,
-      created_by: userId,
+  const nextWeek = new Date();
+  nextWeek.setDate(nextWeek.getDate() + 7);
+
+  const toCreate = orders
+    .filter(o => !existingExceptions.has(o.orderId))
+    .map(o => ({
+      company_id: companyId, exception_type: "on_hold", severity: "medium", status: "open",
+      title: `On-hold: ${o.orderNumber}`,
+      description: `Order ${o.orderNumber}${o.customerName ? ` (${o.customerName})` : ""} is on-hold.`,
+      linked_order_id: o.orderId, created_by: userId,
       follow_up_due_at: nextWeek.toISOString(),
-    });
+    }));
+
+  for (let i = 0; i < toCreate.length; i += BATCH_SIZE) {
+    await db.from("exceptions").insert(toCreate.slice(i, i + BATCH_SIZE)).catch(() => {});
   }
 }
