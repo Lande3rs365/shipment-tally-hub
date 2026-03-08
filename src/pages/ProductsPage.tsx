@@ -593,12 +593,14 @@ function ParentGroup({
 }
 
 const SKU_STRUCTURE = [
-  { prefix: 'SH-', label: 'Shafts', pattern: 'SH-{Material}-{Joint}-{Model}-{TipSize}', example: 'SH-CF-CL-RAD-125', hierarchy: 'Flat (standalone)' },
-  { prefix: 'PC-', label: 'Playing Cues', pattern: 'PC-{Tier}-{Model}[-{Wrap}]', example: 'PC-ASP-JF1010-NW', hierarchy: '3 segments = parent, 4 = variant' },
-  { prefix: 'BK-/JP-/BJ-', label: 'Break & Jump', pattern: 'BK-{Model}[-{Wrap}]', example: 'BK-JF-THUNDER-NW', hierarchy: 'Flat (standalone)' },
-  { prefix: 'CS-', label: 'Cases', pattern: 'CS-{Type}-{Model}-{Colour}-{Size}', example: 'CS-HC-CLASSIC-BLK-2X4', hierarchy: 'Flat (standalone)' },
-  { prefix: 'ACC-', label: 'Accessories', pattern: 'ACC-{SubCat}-{Item}[-{Variant}]', example: 'ACC-TIP-ULTRASKIN-M', hierarchy: 'Flat (standalone)' },
-  { prefix: 'APP-', label: 'Apparel', pattern: 'APP-{Gender}-{Design}[-{Size}]', example: 'APP-MJ-PATRIOT-USA-S', hierarchy: 'Size=PARENT → parent, else variant' },
+  { prefix: 'PC-', label: 'Playing Cues', pattern: 'PC-[TIER]-[MODEL]-[WRAP]', example: 'PC-ASP-JF2003BF-NW', hierarchy: 'Parent (no wrap) + wrap variants' },
+  { prefix: 'BK-', label: 'Break Cues', pattern: 'BK-BRK-[MODEL]-[WRAP]', example: 'BK-BRK-BRKR-RED-NW', hierarchy: 'Flat (standalone)' },
+  { prefix: 'JP-', label: 'Jump Cues', pattern: 'JP-JMP-[MODEL]-[WRAP]', example: 'JP-JMP-RPG-NW', hierarchy: 'Flat (standalone)' },
+  { prefix: 'BJ-', label: 'Break+Jump', pattern: 'BJ-BRJ-[MODEL]-[WRAP]', example: 'BJ-BRJ-BJ2-STD', hierarchy: 'Flat (standalone)' },
+  { prefix: 'SH-', label: 'Shafts', pattern: 'SH-[TYPE]-[MODEL]-[JOINT]-[TIP]', example: 'SH-CF-CROWN-RAD-125', hierarchy: 'Flat (standalone)' },
+  { prefix: 'CS-', label: 'Cue Cases', pattern: 'CS-[TYPE]-[MODEL]-[COLOUR]-[SIZE]', example: 'CS-HC-TUFF-BRN-3X6', hierarchy: 'Flat (standalone)' },
+  { prefix: 'ACC-', label: 'Accessories', pattern: 'ACC-[SUBCAT]-[MODEL]-[VAR]', example: 'ACC-EXT-3IN', hierarchy: 'Flat (standalone)' },
+  { prefix: 'APP-', label: 'Apparel', pattern: 'APP-[TYPE]-[DESIGN]-[SIZE]', example: 'APP-MJ-PATRIOT-USA-XL', hierarchy: 'Size=PARENT → parent, else variant' },
 ];
 
 function OverviewTab({ productsByCategory }: { productsByCategory: Record<string, Product[]> }) {
