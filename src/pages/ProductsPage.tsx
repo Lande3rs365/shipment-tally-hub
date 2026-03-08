@@ -590,12 +590,8 @@ const SKU_STRUCTURE = [
 function OverviewTab({ totalProducts, productsByCategory }: { totalProducts: number; productsByCategory: Record<string, Product[]> }) {
   return (
     <div className="space-y-6">
-      {/* Summary cards */}
+      {/* Category breakdown cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-2xl font-bold text-foreground">{totalProducts}</p>
-          <p className="text-xs text-muted-foreground">Total Products</p>
-        </div>
         {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
           const count = (productsByCategory[key] || []).length;
           if (count === 0) return null;
