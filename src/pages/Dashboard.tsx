@@ -63,8 +63,13 @@ export default function Dashboard() {
   const { currentCompany, loading: companyLoading } = useCompany();
   const { data: stats, isLoading } = useDashboardStats();
   const [period, setPeriod] = useState<Period>("week");
-  const [ordersPage, setOrdersPage] = useState(1);
-  const [exceptionsPage, setExceptionsPage] = useState(1);
+  const [ordersSort, setOrdersSort] = useState<SortState>({ key: 'order_date', dir: 'asc' });
+  const [exceptionsSort, setExceptionsSort] = useState<SortState>({ key: 'orders.order_date', dir: 'asc' });
+
+  const toggleSort = (setter: React.Dispatch<React.SetStateAction<SortState>>, pageSetter: React.Dispatch<React.SetStateAction<number>>) => (key: string) => {
+    setter(prev => ({ key, dir: prev.key === key && prev.dir === 'asc' ? 'desc' : 'asc' }));
+    pageSetter(1);
+  };
 
   if (companyLoading || isLoading) return <div className="p-6"><LoadingSpinner message="Loading dashboard..." /></div>;
 
