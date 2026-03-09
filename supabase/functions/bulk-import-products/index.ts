@@ -12,16 +12,52 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+
+    // --- Authorization: verify caller belongs to the company ---
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { products, company_id } = await req.json();
-    
+
     if (!products || !company_id) {
       return new Response(JSON.stringify({ error: "Missing products or company_id" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Verify the authenticated user is a member of the target company
+    const { data: membership, error: memberErr } = await userClient
+      .from("user_companies")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("company_id", company_id)
+      .maybeSingle();
+
+    if (memberErr || !membership) {
+      return new Response(JSON.stringify({ error: "You do not have access to this company" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Authorized: proceed with service-role client for bulk insert ---
+    const supabase = createClient(supabaseUrl, serviceKey);
 
     // Pass 1: Insert parents (MODEL rows) and standalones
     const parents = products.filter((p: any) => p.row_type === 'parent' || p.row_type === 'standalone');
@@ -42,7 +78,6 @@ Deno.serve(async (req) => {
     }
 
     // Pass 2: Insert variants with parent_product_id
-    // Walk up SKU segments to find the matching parent
     const variantRows = variants.map((v: any) => {
       const segments = v.sku.split('-');
       let parentId: string | null = null;
@@ -76,7 +111,12 @@ Deno.serve(async (req) => {
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error('bulk-import error:', err);
+    const isDbConstraint = err?.code?.startsWith('23');
+    const userMsg = isDbConstraint
+      ? 'One or more products conflict with existing data (duplicate SKU or constraint violation).'
+      : 'An unexpected error occurred during import. Please try again.';
+    return new Response(JSON.stringify({ error: userMsg }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
