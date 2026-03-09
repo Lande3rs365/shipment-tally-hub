@@ -458,6 +458,37 @@ Use the `InviteMemberDialog` component or call `supabase.from('invitations').ins
 
 ---
 
+## Known Security Items
+
+### Leaked Password Protection (requires Supabase Dashboard — not fixable via SQL)
+
+Supabase's security advisor flags that **Leaked Password Protection** is disabled. This feature
+checks new passwords against the HaveIBeenPwned database and rejects compromised ones.
+
+**To enable:**
+1. Open the Supabase Dashboard for this project
+2. Go to **Authentication → Security**
+3. Toggle on **"Check passwords against HaveIBeenPwned"**
+
+This cannot be configured via SQL migrations — it is a platform-level Auth setting.
+
+### companies INSERT policy (resolved in migration `20260309120559`)
+
+Supabase's security advisor previously flagged the `companies` INSERT policy as "always true"
+(`WITH CHECK (true)`). This policy has been **dropped** — it was unnecessary because:
+
+- Company creation goes exclusively through the `create_company_with_owner()` RPC function
+  (`OnboardingPage.tsx` line 83)
+- That function is `SECURITY DEFINER`, so it **bypasses RLS entirely** — no INSERT policy is
+  needed or evaluated
+- No client code path does a direct `INSERT INTO companies`
+
+**Do not re-add an INSERT policy on `companies`** unless a new client-side direct-insert flow
+is introduced, in which case `WITH CHECK (auth.uid() IS NOT NULL)` is the minimum; `WITH CHECK (true)`
+must be avoided.
+
+---
+
 ## DO NOT
 
 - Edit `src/integrations/supabase/types.ts` manually — it is auto-generated
