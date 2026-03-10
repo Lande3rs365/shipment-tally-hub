@@ -1,73 +1,153 @@
-# Welcome to your Lovable project
+# Shipment Tally Hub
 
-## Project info
+Multi-tenant inventory and shipment management web app for operations teams. Manage customer orders, track outbound shipments, monitor inventory, process returns, and handle supplier manifests — all in one place.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Stack:** React 18 · TypeScript · Vite · Supabase (PostgreSQL + Auth) · shadcn/ui · Tailwind CSS · TanStack Query
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Quick Start
 
-**Use Lovable**
+### Prerequisites
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- Node.js 18+ and npm
+- A [Supabase](https://supabase.com) project
 
-Changes made via Lovable will be committed automatically to this repo.
+### 1. Clone and install
 
-**Use your preferred IDE**
+```bash
+git clone <repo-url>
+cd shipment-tally-hub
+npm install
+```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 2. Configure environment
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+```bash
+cp .env.example .env
+```
 
-Follow these steps:
+Open `.env` and fill in your Supabase credentials (found in your Supabase dashboard under **Settings → API**):
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```
+VITE_SUPABASE_URL=https://<project-id>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<your-anon-key>
+VITE_SUPABASE_PROJECT_ID=<project-id>
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+The anon key is safe for client-side use — Row Level Security (RLS) enforces all access control.
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 3. Apply database migrations
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npx supabase db push
+```
+
+Or apply migrations manually via Supabase Studio (SQL editor) — migration files are in `supabase/migrations/`.
+
+### 4. Start the dev server
+
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open [http://localhost:8080](http://localhost:8080).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## Development Commands
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server at http://localhost:8080 |
+| `npm run build` | Production build |
+| `npm run preview` | Preview production build locally |
+| `npm run lint` | ESLint check |
+| `npm run test` | Run tests (Vitest) |
+| `npm run test:watch` | Run tests in watch mode |
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## Features
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+| Feature | Description |
+|---------|-------------|
+| **Dashboard** | KPIs, backlog, exceptions, stock alerts, shipping alerts, inbound manifests |
+| **Orders** | WooCommerce order management with event log and line items |
+| **Shipments** | Outbound shipment tracking (Pirate Ship / ShipStation) |
+| **Inventory** | Stock levels by SKU and warehouse location with reorder alerts |
+| **Stock Ledger** | Full audit trail of all stock movements and manual adjustments |
+| **Returns** | Return processing with reason codes and condition tracking |
+| **Exceptions** | Operational exceptions and on-hold order management |
+| **Supplier Manifests** | Inbound shipment tracking with expected vs. received quantities |
+| **Products** | SKU catalog with billiard cue parent/variant hierarchy support |
+| **Data Intake** | CSV/XLSX import for WooCommerce orders, Pirate Ship shipments, and master XLSX |
+| **Exports** | CSV exports for orders, backlog, exceptions, and inventory snapshot |
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Data Imports
 
-## Can I connect a custom domain to my Lovable project?
+The app auto-detects import source by inspecting file headers:
 
-Yes, you can!
+| Source | File type | Detection |
+|--------|-----------|-----------|
+| WooCommerce | `.csv` | `order_id`, `order_status` columns |
+| Pirate Ship / ShipStation | `.csv` | `Date`, `Tracking Number`, `Name` columns |
+| Master (orders + shipments) | `.xlsx` | Combined Excel format |
+| SKU Framework (billiard cues) | `.xlsx` | Via **Products** page |
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Architecture
+
+- **No backend server** — all data access via Supabase PostgREST with Row Level Security
+- **Multi-tenant** — every table is scoped to `company_id`; users can belong to multiple companies
+- **Auth** — Supabase Auth with email/password and Google OAuth; invitation system for team members
+- **State** — React Query for server state, React Context for auth and company selection
+
+See [`CLAUDE.md`](./CLAUDE.md) for full architecture details, coding conventions, and database schema reference.
+
+---
+
+## Deployment
+
+### Vercel / Netlify
+
+1. Connect your repository
+2. Set the three `VITE_*` environment variables in the platform dashboard
+3. Build command: `npm run build`
+4. Output directory: `dist`
+
+### Supabase Auth Redirect URLs
+
+After deploying, add your production URL to Supabase → **Authentication → URL Configuration → Redirect URLs**:
+
+```
+https://your-domain.com/**
+```
+
+### Security checklist
+
+- [ ] Enable **Leaked Password Protection** in Supabase → Authentication → Security
+- [ ] Verify RLS is enabled on all tables (already configured in migrations)
+- [ ] Add production domain to Supabase allowed redirect URLs
+- [ ] Confirm `.env` is not committed (check `.gitignore`)
+
+---
+
+## Project Structure
+
+```
+src/
+├── components/       # Shared UI components + shadcn/ui primitives
+├── pages/            # One component per route
+├── contexts/         # Auth and Company context providers
+├── hooks/            # React Query data hooks (useSupabaseData.ts)
+├── lib/              # CSV/XLSX parsers and import helpers
+├── types/            # Hand-written TypeScript entity types
+└── integrations/
+    └── supabase/     # Supabase client + auto-generated DB types
+supabase/
+└── migrations/       # SQL migration history (26 files)
+```
