@@ -259,10 +259,6 @@ function TeamTab() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const extraSeats = useExtraSeats();
-  const { currentCompany } = useCompany();
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
