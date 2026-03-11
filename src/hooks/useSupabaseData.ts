@@ -377,3 +377,38 @@ export function useDashboardStats() {
     enabled: !!currentCompany?.id,
   });
 }
+
+// ── Purchased Add-ons ──
+export interface PurchasedAddon {
+  id: string;
+  company_id: string;
+  addon_type: string;
+  quantity: number;
+  stripe_payment_id: string | null;
+  purchased_by: string;
+  created_at: string;
+}
+
+export function usePurchasedAddons() {
+  return useCompanyQuery<PurchasedAddon[]>("purchased_addons", async (companyId) => {
+    const { data, error } = await db
+      .from("purchased_addons")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  });
+}
+
+export function useExtraSeats() {
+  const { data: addons = [] } = usePurchasedAddons();
+  return addons
+    .filter((a: PurchasedAddon) => a.addon_type === "extra_seat")
+    .reduce((sum: number, a: PurchasedAddon) => sum + a.quantity, 0);
+}
+
+export function useHasAddon(addonType: string) {
+  const { data: addons = [] } = usePurchasedAddons();
+  return addons.some((a: PurchasedAddon) => a.addon_type === addonType);
+}

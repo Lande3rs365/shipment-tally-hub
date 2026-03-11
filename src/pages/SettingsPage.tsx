@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
+import { useExtraSeats } from "@/hooks/useSupabaseData";
+import { Coffee } from "lucide-react";
 import type { StockLocation } from "@/types/database";
 
 const db = supabase as any;
