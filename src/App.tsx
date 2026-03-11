@@ -27,6 +27,7 @@ import AcceptInvitePage from "@/pages/AcceptInvitePage";
 import ProductsPage from "@/pages/ProductsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
+import BillingPage from "@/pages/BillingPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,7 @@ const App = () => (
                           <Route path="/profile" element={<ProfilePage />} />
                           <Route path="/exports" element={<ExportsPage />} />
                           <Route path="/settings" element={<SettingsPage />} />
+                          <Route path="/billing" element={<BillingPage />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </AppLayout>
