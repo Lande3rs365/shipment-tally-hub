@@ -35,7 +35,14 @@ export default function OnboardingStepCard({
   const progress = ((stepIndex + 1) / totalSteps) * 100;
 
   return (
-    <div className="w-full max-w-lg space-y-4">
+    <motion.div
+      key={stepIndex}
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -40 }}
+      transition={{ duration: 0.3, ease: "easeInOut" }}
+      className="w-full max-w-lg space-y-4"
+    >
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Step {stepIndex + 1} of {totalSteps}</span>
