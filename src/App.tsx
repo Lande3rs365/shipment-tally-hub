@@ -81,6 +81,7 @@ const App = () => (
                           <Route path="/profile" element={<ProfilePage />} />
                           <Route path="/exports" element={<ExportsPage />} />
                           <Route path="/settings" element={<SettingsPage />} />
+                          <Route path="/billing" element={<BillingPage />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </AppLayout>
