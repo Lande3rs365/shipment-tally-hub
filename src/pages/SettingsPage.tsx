@@ -14,8 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Building2, MapPin, Users, Save, Loader2, Plus, Trash2, Copy,
-  Mail, UserPlus, X,
+  Mail, UserPlus, X, Crown, Lock,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import type { StockLocation } from "@/types/database";
 
