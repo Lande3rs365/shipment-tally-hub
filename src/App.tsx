@@ -79,6 +79,7 @@ const App = () => (
                           <Route path="/products" element={<ProductsPage />} />
                           <Route path="/profile" element={<ProfilePage />} />
                           <Route path="/exports" element={<ExportsPage />} />
+                          <Route path="/settings" element={<SettingsPage />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </AppLayout>
