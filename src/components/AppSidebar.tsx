@@ -91,7 +91,7 @@ export default function AppSidebar() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          {!collapsed && <InviteMemberDialog />}
+          
         </div>
       )}
 
