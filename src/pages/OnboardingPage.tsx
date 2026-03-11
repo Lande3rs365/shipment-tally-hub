@@ -190,6 +190,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-8">
+      <AnimatePresence mode="wait">
       {/* Step 0: Business Type */}
       {step === 0 && (
         <OnboardingStepCard
