@@ -345,8 +345,9 @@ function TeamTab() {
   };
 
   const pending = invitations.filter((i) => !i.accepted_at && new Date(i.expires_at) > new Date());
+  const seatLimit = FREE_MEMBER_LIMIT + extraSeats;
   const totalSeats = members.length + pending.length;
-  const atLimit = totalSeats >= FREE_MEMBER_LIMIT;
+  const atLimit = totalSeats >= seatLimit;
 
   return (
     <div className="space-y-6">
