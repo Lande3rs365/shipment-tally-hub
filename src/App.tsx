@@ -26,6 +26,7 @@ import OnboardingPage from "@/pages/OnboardingPage";
 import AcceptInvitePage from "@/pages/AcceptInvitePage";
 import ProductsPage from "@/pages/ProductsPage";
 import ProfilePage from "@/pages/ProfilePage";
+import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
