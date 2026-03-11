@@ -396,41 +396,60 @@ function TeamTab() {
       </Card>
 
       {/* Invite */}
-      <Card className="border-border bg-card">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-primary" /> Invite Member
-          </CardTitle>
-          <CardDescription>Send an invite code to a new team member.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <Input
-                type="email"
-                placeholder="colleague@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+      {atLimit ? (
+        <Card className="border-border bg-card">
+          <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <Lock className="w-6 h-6 text-primary" />
             </div>
-            <Select value={role} onValueChange={setRole}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ROLES.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button type="submit" disabled={sending} className="gap-1">
-              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-              Invite
+            <div>
+              <p className="text-sm font-medium text-foreground">Team limit reached</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                The free plan supports up to {FREE_MEMBER_LIMIT} team members. Upgrade to add more.
+              </p>
+            </div>
+            <Button onClick={() => navigate("/billing")} className="gap-1.5 mt-1">
+              <Crown className="w-4 h-4" /> Upgrade Plan
             </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-border bg-card">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" /> Invite Member
+            </CardTitle>
+            <CardDescription>Send an invite code to a new team member.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleInvite} className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <Input
+                  type="email"
+                  placeholder="colleague@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="submit" disabled={sending} className="gap-1">
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                Invite
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pending Invitations */}
       {pending.length > 0 && (
