@@ -76,6 +76,7 @@ const App = () => (
                           <Route path="/returns" element={<ReturnsPage />} />
                           <Route path="/exceptions" element={<ExceptionsPage />} />
                           <Route path="/products" element={<ProductsPage />} />
+                          <Route path="/profile" element={<ProfilePage />} />
                           <Route path="/exports" element={<ExportsPage />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
