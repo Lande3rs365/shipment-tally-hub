@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,8 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +32,7 @@ export default function SignupPage() {
     if (error) {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
     } else {
-      setSubmitted(true);
+      navigate("/onboarding", { replace: true });
     }
   };
 
@@ -44,29 +44,6 @@ export default function SignupPage() {
       toast({ title: "Google signup failed", description: error.message, variant: "destructive" });
     }
   };
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-md border-border bg-card">
-          <CardHeader className="text-center space-y-3">
-            <div className="mx-auto w-12 h-12 rounded-lg bg-success flex items-center justify-center">
-              <Package className="w-6 h-6 text-success-foreground" />
-            </div>
-            <CardTitle className="text-2xl text-foreground">Check your email</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              We've sent a confirmation link to <strong>{email}</strong>. Click the link to activate your account.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter className="justify-center">
-            <Link to="/login" className="text-sm text-primary hover:underline">
-              Back to login
-            </Link>
-          </CardFooter>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">

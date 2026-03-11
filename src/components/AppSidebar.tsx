@@ -1,18 +1,18 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Package, Truck, Warehouse, Upload,
   AlertTriangle, FileText, ChevronLeft, ChevronRight,
-  ArrowRightLeft, Ship, RotateCcw, LogOut, Building2, ChevronsUpDown, Tag
+  ArrowRightLeft, Ship, RotateCcw, LogOut, Building2, ChevronsUpDown, Tag, User
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompany } from "@/contexts/CompanyContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -31,10 +31,30 @@ const navItems = [
 export default function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { companies, currentCompany, setCurrentCompany } = useCompany();
 
-  const displayName = user?.user_metadata?.full_name || user?.email || "User";
+  const [profileData, setProfileData] = useState<{ display_name: string | null; job_title: string | null }>({
+    display_name: null,
+    job_title: null,
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    const fetch = async () => {
+      const { data } = await (supabase as any)
+        .from("profiles")
+        .select("display_name, job_title")
+        .eq("user_id", user.id)
+        .single();
+      if (data) setProfileData(data);
+    };
+    fetch();
+  }, [user]);
+
+  const displayName = profileData.display_name || user?.user_metadata?.full_name || user?.email || "User";
+  const jobTitle = profileData.job_title;
   const avatarUrl = user?.user_metadata?.avatar_url;
   const initials = displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
 
@@ -91,7 +111,6 @@ export default function AppSidebar() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          
         </div>
       )}
 
@@ -116,46 +135,53 @@ export default function AppSidebar() {
         })}
       </nav>
 
+      {/* Profile Section */}
       <div className="p-2 border-t border-sidebar-border space-y-1">
         {user && (
-          <div className={cn(
-            "flex items-center gap-3 px-3 py-2 rounded-md",
-            collapsed && "justify-center"
-          )}>
-            <Avatar className="w-7 h-7 shrink-0">
-              <AvatarImage src={avatarUrl} alt={displayName} />
-              <AvatarFallback className="text-[10px] bg-sidebar-accent text-sidebar-accent-foreground">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            {!collapsed && (
-              <div className="flex-1 overflow-hidden">
-                <p className="text-xs font-medium text-sidebar-accent-foreground truncate">{displayName}</p>
-                <p className="text-[10px] text-sidebar-foreground truncate">{user.email}</p>
-              </div>
-            )}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-sidebar-accent",
+                collapsed && "justify-center"
+              )}>
+                <Avatar className="w-7 h-7 shrink-0">
+                  <AvatarImage src={avatarUrl} alt={displayName} />
+                  <AvatarFallback className="text-[10px] bg-sidebar-accent text-sidebar-accent-foreground">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                {!collapsed && (
+                  <div className="flex-1 overflow-hidden text-left">
+                    <p className="text-xs font-medium text-sidebar-accent-foreground truncate">{displayName}</p>
+                    <p className="text-[10px] text-sidebar-foreground truncate">{jobTitle || user.email}</p>
+                  </div>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="end" className="w-48">
+              <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
+                <User className="w-3.5 h-3.5 mr-2" />
+                View Profile
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={signOut}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <LogOut className="w-3.5 h-3.5 mr-2" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-        <div className="flex gap-1">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className={cn(
-              "flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent text-sm transition-colors",
-              collapsed ? "w-full" : "flex-1"
-            )}
-          >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <><ChevronLeft className="w-4 h-4" /><span>Collapse</span></>}
-          </button>
-          {!collapsed && (
-            <button
-              onClick={signOut}
-              className="flex items-center justify-center px-3 py-2 rounded-md text-sidebar-foreground hover:bg-destructive/20 hover:text-destructive text-sm transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className={cn(
+            "w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sidebar-foreground hover:bg-sidebar-accent text-sm transition-colors"
           )}
-        </div>
+        >
+          {collapsed ? <ChevronRight className="w-4 h-4" /> : <><ChevronLeft className="w-4 h-4" /><span>Collapse</span></>}
+        </button>
       </div>
     </aside>
   );
