@@ -88,6 +88,6 @@ export default function OnboardingStepCard({
           </div>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 }
