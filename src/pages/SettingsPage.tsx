@@ -249,10 +249,13 @@ const ROLES = [
   { value: "admin", label: "Admin" },
 ];
 
+const FREE_MEMBER_LIMIT = 3;
+
 function TeamTab() {
   const { currentCompany } = useCompany();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
