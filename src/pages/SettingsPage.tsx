@@ -419,12 +419,17 @@ function TeamTab() {
             <div>
               <p className="text-sm font-medium text-foreground">Team limit reached</p>
               <p className="text-xs text-muted-foreground mt-1">
-                The free plan supports up to {FREE_MEMBER_LIMIT} team members. Upgrade to add more.
+                Your plan supports up to {seatLimit} team members. Buy an extra seat or upgrade.
               </p>
             </div>
-            <Button onClick={() => navigate("/billing")} className="gap-1.5 mt-1">
-              <Crown className="w-4 h-4" /> Upgrade Plan
-            </Button>
+            <div className="flex items-center gap-2 mt-1">
+              <Button variant="outline" onClick={() => navigate("/billing")} className="gap-1.5">
+                <Coffee className="w-4 h-4" /> Buy Extra Seat — $5
+              </Button>
+              <Button onClick={() => navigate("/billing")} className="gap-1.5">
+                <Crown className="w-4 h-4" /> Upgrade Plan
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
