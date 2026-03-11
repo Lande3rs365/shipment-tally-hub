@@ -25,6 +25,7 @@ import SignupPage from "@/pages/SignupPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import AcceptInvitePage from "@/pages/AcceptInvitePage";
 import ProductsPage from "@/pages/ProductsPage";
+import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
