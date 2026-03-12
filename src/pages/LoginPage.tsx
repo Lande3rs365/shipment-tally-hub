@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeRedirectPath } from "@/lib/sanitizeRedirect";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  // After login, redirect to the page the user was trying to reach.
+  // sanitizeRedirectPath rejects javascript: and external URLs
+  // (mitigation for CVE GHSA-2w69-qvjg-hvjx).
+  const from = sanitizeRedirectPath((location.state as any)?.from, "/");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +32,7 @@ export default function LoginPage() {
       console.error("[login]", error);
       toast({ title: "Login failed", description: "Invalid email or password.", variant: "destructive" });
     } else {
-      navigate("/");
+      navigate(from, { replace: true });
     }
   };
 
