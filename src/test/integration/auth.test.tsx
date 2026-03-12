@@ -94,9 +94,11 @@ describe("AuthContext", () => {
     expect(mockSignOut).toHaveBeenCalledOnce();
   });
 
-  it("subscribes to auth state changes on mount", () => {
+  it("subscribes to auth state changes on mount", async () => {
     mockGetSession.mockResolvedValue({ data: { session: null } });
-    render(createElement(AuthProvider, null, createElement("div")));
+    await act(async () => {
+      render(createElement(AuthProvider, null, createElement("div")));
+    });
     expect(mockOnAuthStateChange).toHaveBeenCalledOnce();
   });
 
