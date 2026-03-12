@@ -444,3 +444,54 @@ export function useWooIntegration() {
     return data as WooIntegration | null;
   });
 }
+
+// ── ShipStation Integration ──
+export interface ShipStationIntegration {
+  id: string;
+  company_id: string;
+  api_key: string;
+  api_secret: string;
+  sync_interval_minutes: number;
+  last_sync_at: string | null;
+  last_sync_order_count: number;
+  last_sync_shipment_count: number;
+  last_sync_status: string;
+  last_sync_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useShipStationIntegration() {
+  return useCompanyQuery<ShipStationIntegration | null>("shipstation_integration", async (companyId) => {
+    const { data, error } = await supabase
+      .from("shipstation_integrations")
+      .select("*")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (error) throw error;
+    return data as ShipStationIntegration | null;
+  });
+}
+
+// ── Tawk.to Settings ──
+export interface TawkSettings {
+  id: string;
+  company_id: string;
+  property_id: string;
+  widget_id: string;
+  is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useTawkSettings() {
+  return useCompanyQuery<TawkSettings | null>("tawk_settings", async (companyId) => {
+    const { data, error } = await supabase
+      .from("tawk_settings")
+      .select("*")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (error) throw error;
+    return data as TawkSettings | null;
+  });
+}
