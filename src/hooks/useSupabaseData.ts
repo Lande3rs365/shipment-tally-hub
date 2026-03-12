@@ -50,7 +50,7 @@ export function useOrder(orderId: string | undefined) {
   return useQuery<OrderWithItems | null>({
     queryKey: ["order", orderId, currentCompany?.id],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from('orders')
         .select('*, order_items(*)')
         .eq('company_id', currentCompany!.id)
