@@ -158,10 +158,14 @@ export default function OnboardingPage() {
       setStep(TOTAL_STEPS); // done state
       setTimeout(() => navigate("/", { replace: true }), 1500);
     } catch (err: any) {
-      console.error("[onboarding:finish]", err);
-      const message = err?.code === "23505"
-        ? "That company code is already taken. Please choose a different one."
-        : "Something went wrong. Please try again.";
+      const code = err?.code;
+      const message =
+        code === "23505" ? "That company code is already taken. Please choose a different one." :
+        code === "23502" ? "A required field is missing. Please fill in all fields and try again." :
+        code === "23514" ? "A value is out of the allowed range. Please check your company name and code." :
+        code === "42501" ? "Permission denied. Please try signing out and back in." :
+        code === "PGRST301" ? "Session expired. Please refresh the page and try again." :
+        err?.message || "Something went wrong. Please try again.";
       toast({ title: "Setup failed", description: message, variant: "destructive" });
       setLoading(false);
     }

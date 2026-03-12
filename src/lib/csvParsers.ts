@@ -313,11 +313,15 @@ export const SOURCE_INFO: Record<string, SourceInfo> = {
 
 // ── File reading helpers ──
 
+const FILE_READ_TIMEOUT_MS = 30_000;
+
 export function readFileAsText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
+    const timer = setTimeout(() => { reader.abort(); reject(new Error("File read timed out. The file may be too large or corrupted.")); }, FILE_READ_TIMEOUT_MS);
+    reader.onload = () => { clearTimeout(timer); resolve(reader.result as string); };
+    reader.onerror = () => { clearTimeout(timer); reject(reader.error); };
+    reader.onabort = () => { clearTimeout(timer); reject(new Error("File read was aborted.")); };
     reader.readAsText(file);
   });
 }
@@ -325,8 +329,10 @@ export function readFileAsText(file: File): Promise<string> {
 export function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as ArrayBuffer);
-    reader.onerror = () => reject(reader.error);
+    const timer = setTimeout(() => { reader.abort(); reject(new Error("File read timed out. The file may be too large or corrupted.")); }, FILE_READ_TIMEOUT_MS);
+    reader.onload = () => { clearTimeout(timer); resolve(reader.result as ArrayBuffer); };
+    reader.onerror = () => { clearTimeout(timer); reject(reader.error); };
+    reader.onabort = () => { clearTimeout(timer); reject(new Error("File read was aborted.")); };
     reader.readAsArrayBuffer(file);
   });
 }
