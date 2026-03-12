@@ -210,7 +210,7 @@ export default function ProductsPage() {
       name: editing.name.trim() || editing.id,
       description: editing.description.trim() || null,
     }).eq("id", editing.id);
-    if (error) { toast.error("Save failed: " + error.message); return; }
+    if (error) { console.error("[products:save]", error); toast.error("Save failed. Please try again."); return; }
     toast.success("Product updated.");
     setEditing(null);
     queryClient.invalidateQueries({ queryKey: ["products"] });
