@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-const mockCaptureException = vi.fn();
+const mockCaptureException = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/sentry", () => ({
   Sentry: { captureException: mockCaptureException },
@@ -37,13 +37,13 @@ describe("ErrorBoundary", () => {
     expect(screen.getByRole("button", { name: /reload page/i })).toBeInTheDocument();
   });
 
-  it("displays the error message in the fallback UI", () => {
+  it("displays a generic error message in the fallback UI", () => {
     render(
       <ErrorBoundary>
         <Bomb />
       </ErrorBoundary>
     );
-    expect(screen.getByText(/test explosion/i)).toBeInTheDocument();
+    expect(screen.getByText(/an unexpected error occurred/i)).toBeInTheDocument();
   });
 
   it("reports the error to Sentry", () => {

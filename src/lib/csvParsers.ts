@@ -264,7 +264,7 @@ export function parseShipmentCSV(csvText: string): ParsedShipment[] {
 
 export function parseMasterXLSX(data: ArrayBuffer): ParsedMasterRow[] {
   assertXlsxSize(data);
-  const workbook = XLSX.read(data, { type: "array", cellDates: true });
+  const workbook = XLSX.read(new Uint8Array(data), { type: "array", cellDates: true });
 
   // Find the sheet — try "All Orders Master" first, fall back to third sheet or first
   let sheetName = workbook.SheetNames.find(n =>

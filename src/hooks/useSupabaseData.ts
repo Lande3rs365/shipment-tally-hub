@@ -335,6 +335,9 @@ export function useDashboardStats() {
         supabase.from('shipments').select('*, orders:order_id(order_number, customer_name, order_date)').eq('company_id', cid).not('status', 'in', '("delivered","in_transit","label_created")').order('shipped_date', { ascending: true }).limit(50),
       ]);
 
+      if (orders.error) throw orders.error;
+      if (shipments.error) throw shipments.error;
+
       const orderList = orders.data || [];
       const shipmentList = shipments.data || [];
       const inventoryList = (inventory.data || []) as InventoryWithRelations[];
