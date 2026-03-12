@@ -37,13 +37,13 @@ describe("ErrorBoundary", () => {
     expect(screen.getByRole("button", { name: /reload page/i })).toBeInTheDocument();
   });
 
-  it("displays the error message in the fallback UI", () => {
+  it("displays a generic error message in the fallback UI", () => {
     render(
       <ErrorBoundary>
         <Bomb />
       </ErrorBoundary>
     );
-    expect(screen.getByText(/test explosion/i)).toBeInTheDocument();
+    expect(screen.getByText(/an unexpected error occurred/i)).toBeInTheDocument();
   });
 
   it("reports the error to Sentry", () => {
