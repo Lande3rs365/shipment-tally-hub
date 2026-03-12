@@ -64,8 +64,9 @@ export function useOrder(orderId: string | undefined) {
 }
 
 export function useOrderEvents(orderId: string | undefined) {
+  const { currentCompany } = useCompany();
   return useQuery<OrderEvent[]>({
-    queryKey: ["order_events", orderId],
+    queryKey: ["order_events", orderId, currentCompany?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('order_events')
@@ -75,24 +76,26 @@ export function useOrderEvents(orderId: string | undefined) {
       if (error) throw error;
       return (data || []) as unknown as OrderEvent[];
     },
-    enabled: !!orderId,
+    enabled: !!orderId && !!currentCompany?.id,
   });
 }
 
 // ── Order Shipments ──
 export function useOrderShipments(orderId: string | undefined) {
+  const { currentCompany } = useCompany();
   return useQuery<Shipment[]>({
-    queryKey: ["order_shipments", orderId],
+    queryKey: ["order_shipments", orderId, currentCompany?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('shipments')
         .select('*')
+        .eq('company_id', currentCompany!.id)
         .eq('order_id', orderId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!orderId,
+    enabled: !!orderId && !!currentCompany?.id,
   });
 }
 

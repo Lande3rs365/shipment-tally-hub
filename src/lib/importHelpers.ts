@@ -167,12 +167,14 @@ export async function importWooCommerceOrders(orders: ParsedOrder[], companyId: 
           total_amount: order.total_amount, currency: order.currency, source: order.source,
         }).eq("id", orderId);
 
-        // Replace line items
-        await supabase.from("order_items").delete().eq("order_id", orderId);
+        // Replace line items — check errors to avoid leaving order with no items
+        const { error: deleteErr } = await supabase.from("order_items").delete().eq("order_id", orderId);
+        if (deleteErr) throw deleteErr;
         if (order.line_items.length > 0) {
-          await supabase.from("order_items").insert(order.line_items.map(li => ({
+          const { error: insertErr } = await supabase.from("order_items").insert(order.line_items.map(li => ({
             order_id: orderId, sku: li.sku, quantity: li.quantity, unit_price: li.unit_price, line_total: li.line_total,
           })));
+          if (insertErr) throw insertErr;
         }
 
         return true;
