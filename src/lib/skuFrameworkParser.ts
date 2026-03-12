@@ -1,5 +1,23 @@
 import * as XLSX from "xlsx";
 
+// ── xlsx security mitigations (GHSA-4r6h-8v6p-xvw6, GHSA-5pgg-2g8v-p4x9) ──
+const XLSX_MAX_BYTES = 20 * 1024 * 1024;
+const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function sanitizeRow(row: Record<string, any>): Record<string, any> {
+  const safe: Record<string, any> = Object.create(null);
+  for (const key of Object.keys(row)) {
+    if (!DANGEROUS_KEYS.has(key)) safe[key] = row[key];
+  }
+  return safe;
+}
+
+function assertXlsxSize(data: ArrayBuffer): void {
+  if (data.byteLength > XLSX_MAX_BYTES) {
+    throw new Error(`File too large (${(data.byteLength / 1024 / 1024).toFixed(1)} MB). Maximum allowed size is 20 MB.`);
+  }
+}
+
 export interface ParsedSkuProduct {
   sku: string;
   name: string;
@@ -45,7 +63,7 @@ function mapRowType(raw: string): 'parent' | 'variant' {
  */
 function sheetToJsonAutoHeader(sheet: XLSX.WorkSheet, targetHeader: string): Record<string, any>[] {
   const allRows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' });
-  
+
   let headerIdx = -1;
   for (let i = 0; i < Math.min(allRows.length, 10); i++) {
     const row = allRows[i];
@@ -54,26 +72,26 @@ function sheetToJsonAutoHeader(sheet: XLSX.WorkSheet, targetHeader: string): Rec
       break;
     }
   }
-  
+
   if (headerIdx === -1) {
-    return XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' });
+    return XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' }).map(sanitizeRow);
   }
-  
+
   const headers = allRows[headerIdx].map((h: any) => String(h).trim());
   const result: Record<string, any>[] = [];
-  
+
   for (let i = headerIdx + 1; i < allRows.length; i++) {
     const row = allRows[i];
     if (!Array.isArray(row)) continue;
-    const obj: Record<string, any> = {};
+    const obj: Record<string, any> = Object.create(null);
     for (let j = 0; j < headers.length; j++) {
-      if (headers[j]) {
+      if (headers[j] && !DANGEROUS_KEYS.has(headers[j])) {
         obj[headers[j]] = j < row.length ? row[j] : '';
       }
     }
     result.push(obj);
   }
-  
+
   return result;
 }
 
@@ -239,6 +257,7 @@ function parseApparel(sheet: XLSX.WorkSheet): ParsedSkuProduct[] {
 }
 
 export function parseSkuFrameworkXlsx(data: ArrayBuffer): ParsedSkuProduct[] {
+  assertXlsxSize(data);
   const workbook = XLSX.read(data, { type: 'array', cellDates: true });
   const sheets = workbook.SheetNames;
   

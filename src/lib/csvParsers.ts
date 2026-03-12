@@ -1,6 +1,37 @@
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 
+// ── xlsx security mitigations ──
+// GHSA-4r6h-8v6p-xvw6: Prototype Pollution — sanitize all keys returned by
+//   sheet_to_json so __proto__ / constructor / prototype can never be used as
+//   property names and pollute the Object prototype.
+// GHSA-5pgg-2g8v-p4x9: ReDoS — cap the input buffer size so a crafted file
+//   cannot trigger catastrophic backtracking in the xlsx regex engine.
+
+const XLSX_MAX_BYTES = 20 * 1024 * 1024; // 20 MB hard cap
+
+const DANGEROUS_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function sanitizeRow(row: Record<string, any>): Record<string, any> {
+  const safe: Record<string, any> = Object.create(null);
+  for (const key of Object.keys(row)) {
+    if (!DANGEROUS_KEYS.has(key)) {
+      safe[key] = row[key];
+    }
+  }
+  return safe;
+}
+
+function sanitizeRows(rows: Record<string, any>[]): Record<string, any>[] {
+  return rows.map(sanitizeRow);
+}
+
+function assertXlsxSize(data: ArrayBuffer): void {
+  if (data.byteLength > XLSX_MAX_BYTES) {
+    throw new Error(`File too large (${(data.byteLength / 1024 / 1024).toFixed(1)} MB). Maximum allowed size is 20 MB.`);
+  }
+}
+
 // ── Shared Types ──
 
 export interface ParsedOrder {
@@ -232,6 +263,7 @@ export function parseShipmentCSV(csvText: string): ParsedShipment[] {
 // Parses the "All Orders Master" tab from the XLSX hub
 
 export function parseMasterXLSX(data: ArrayBuffer): ParsedMasterRow[] {
+  assertXlsxSize(data);
   const workbook = XLSX.read(data, { type: "array", cellDates: true });
 
   // Find the sheet — try "All Orders Master" first, fall back to third sheet or first
@@ -242,7 +274,7 @@ export function parseMasterXLSX(data: ArrayBuffer): ParsedMasterRow[] {
   if (!sheetName) sheetName = workbook.SheetNames[0];
 
   const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+  const rows = sanitizeRows(XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" }));
 
   return rows.map((row) => {
     // Normalize keys — XLSX sometimes keeps original casing
