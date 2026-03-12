@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-const mockCaptureException = vi.fn();
+const mockCaptureException = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/sentry", () => ({
   Sentry: { captureException: mockCaptureException },
