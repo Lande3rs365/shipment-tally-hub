@@ -66,12 +66,34 @@ export default function IntegrationsPage() {
 
   const saveCredentials = async (silent = false) => {
     if (!currentCompany) return;
-    const url = storeUrl || integration?.store_url;
-    const key = consumerKey || integration?.consumer_key;
-    const secret = consumerSecret || integration?.consumer_secret;
+    const url = (storeUrl || integration?.store_url || "").trim();
+    const key = (consumerKey || integration?.consumer_key || "").trim();
+    const secret = (consumerSecret || integration?.consumer_secret || "").trim();
 
     if (!url || !key || !secret) {
       toast.error("Please fill in all credential fields");
+      return;
+    }
+
+    // Validate URL format
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== "https:") {
+        toast.error("Store URL must use HTTPS");
+        return;
+      }
+    } catch {
+      toast.error("Invalid store URL format");
+      return;
+    }
+
+    // Validate key formats
+    if (!key.startsWith("ck_") || key.length < 10) {
+      toast.error("Consumer Key should start with 'ck_'");
+      return;
+    }
+    if (!secret.startsWith("cs_") || secret.length < 10) {
+      toast.error("Consumer Secret should start with 'cs_'");
       return;
     }
 

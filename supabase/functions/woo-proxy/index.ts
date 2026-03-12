@@ -13,6 +13,35 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+// ── SSRF Protection ──
+function isValidStoreUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // Must be HTTPS
+    if (parsed.protocol !== "https:") return false;
+    // Block internal/private hostnames
+    const hostname = parsed.hostname.toLowerCase();
+    const blockedPatterns = [
+      "localhost", "127.0.0.1", "0.0.0.0", "::1",
+      "169.254.", "10.", "192.168.", "172.16.", "172.17.", "172.18.",
+      "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.",
+      "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.",
+      ".internal", ".local", ".localhost",
+      "metadata.google", "metadata.aws",
+    ];
+    for (const pattern of blockedPatterns) {
+      if (hostname === pattern || hostname.startsWith(pattern) || hostname.endsWith(pattern)) {
+        return false;
+      }
+    }
+    // Must have a real TLD (at least one dot)
+    if (!hostname.includes(".")) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -42,7 +71,7 @@ Deno.serve(async (req) => {
   let body: {
     company_id: string;
     action: "test" | "fetch_orders";
-    after?: string;        // ISO date for incremental sync
+    after?: string;
     page?: number;
     per_page?: number;
   };
@@ -57,7 +86,13 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "company_id and action are required" }, 400);
   }
 
-  // ── Verify membership ──
+  // Validate UUID format for company_id
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(company_id)) {
+    return jsonResponse({ error: "Invalid company_id" }, 400);
+  }
+
+  // ── Verify membership + role (owner or admin only) ──
   const serviceClient = createClient(
     supabaseUrl,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -65,13 +100,17 @@ Deno.serve(async (req) => {
 
   const { data: membership } = await serviceClient
     .from("user_companies")
-    .select("id")
+    .select("id, role")
     .eq("user_id", userId)
     .eq("company_id", company_id)
     .maybeSingle();
 
   if (!membership) {
     return jsonResponse({ error: "Forbidden" }, 403);
+  }
+
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    return jsonResponse({ error: "Forbidden: owner or admin role required" }, 403);
   }
 
   // ── Fetch WooCommerce credentials ──
@@ -86,20 +125,24 @@ Deno.serve(async (req) => {
   }
 
   const { store_url, consumer_key, consumer_secret } = integration;
+
+  // ── SSRF validation ──
+  if (!isValidStoreUrl(store_url)) {
+    return jsonResponse({ error: "Invalid store URL: must be HTTPS and a public domain" }, 400);
+  }
+
   const baseUrl = store_url.replace(/\/+$/, "");
   const authString = btoa(`${consumer_key}:${consumer_secret}`);
 
   try {
     if (action === "test") {
-      // Lightweight test: fetch 1 order
       const url = `${baseUrl}/wp-json/wc/v3/orders?per_page=1`;
       const res = await fetch(url, {
         headers: { Authorization: `Basic ${authString}` },
       });
       if (!res.ok) {
-        const text = await res.text();
         return jsonResponse(
-          { error: `WooCommerce returned ${res.status}`, details: text.slice(0, 500) },
+          { error: `WooCommerce returned ${res.status}` },
           502,
         );
       }
@@ -108,8 +151,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === "fetch_orders") {
-      const page = body.page || 1;
-      const perPage = Math.min(body.per_page || 100, 100);
+      const page = Math.max(1, Math.min(body.page || 1, 1000));
+      const perPage = Math.max(1, Math.min(body.per_page || 100, 100));
       const params = new URLSearchParams({
         per_page: String(perPage),
         page: String(page),
@@ -117,6 +160,10 @@ Deno.serve(async (req) => {
         order: "desc",
       });
       if (body.after) {
+        // Validate ISO date format
+        if (isNaN(Date.parse(body.after))) {
+          return jsonResponse({ error: "Invalid 'after' date format" }, 400);
+        }
         params.set("after", body.after);
       }
 
@@ -125,9 +172,8 @@ Deno.serve(async (req) => {
         headers: { Authorization: `Basic ${authString}` },
       });
       if (!res.ok) {
-        const text = await res.text();
         return jsonResponse(
-          { error: `WooCommerce returned ${res.status}`, details: text.slice(0, 500) },
+          { error: `WooCommerce returned ${res.status}` },
           502,
         );
       }
@@ -139,8 +185,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ orders, total_pages: totalPages, total_orders: totalOrders, page });
     }
 
-    return jsonResponse({ error: `Unknown action: ${action}` }, 400);
+    return jsonResponse({ error: "Invalid action" }, 400);
   } catch (err: any) {
-    return jsonResponse({ error: "Failed to reach WooCommerce store", details: err?.message }, 502);
+    console.error("WooCommerce proxy error:", err?.message);
+    return jsonResponse({ error: "Failed to reach WooCommerce store" }, 502);
   }
 });
