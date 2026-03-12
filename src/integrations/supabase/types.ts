@@ -1130,6 +1130,7 @@ export type Database = {
           last_sync_order_count: number | null
           last_sync_status: string | null
           store_url: string
+          sync_interval_minutes: number
           updated_at: string
         }
         Insert: {
@@ -1143,6 +1144,7 @@ export type Database = {
           last_sync_order_count?: number | null
           last_sync_status?: string | null
           store_url: string
+          sync_interval_minutes?: number
           updated_at?: string
         }
         Update: {
@@ -1156,6 +1158,7 @@ export type Database = {
           last_sync_order_count?: number | null
           last_sync_status?: string | null
           store_url?: string
+          sync_interval_minutes?: number
           updated_at?: string
         }
         Relationships: [
