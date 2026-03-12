@@ -97,6 +97,7 @@ const App = () => (
                           <Route path="/exports" element={<ExportsPage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/billing" element={<BillingPage />} />
+                          <Route path="/integrations" element={<IntegrationsPage />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </AppLayout>

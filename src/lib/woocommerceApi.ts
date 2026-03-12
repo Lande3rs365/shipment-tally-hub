@@ -72,8 +72,9 @@ export function transformWooOrder(woo: WooOrder): ParsedOrder {
     total_amount: parseFloat(woo.total) || null,
     currency: woo.currency || "AUD",
     source: "woocommerce_api",
-    line_items: (woo.line_items || []).map((li) => ({
+    line_items: (woo.line_items || []).map((li: any) => ({
       sku: li.sku || "",
+      name: li.name || li.sku || "Unknown",
       quantity: li.quantity || 1,
       unit_price: parseFloat(li.price) || null,
       line_total: parseFloat(li.total) || null,

@@ -1,1 +1,4 @@
 project_id = "zfpjluljgyyuhrapybsg"
+
+[functions.woo-proxy]
+verify_jwt = false

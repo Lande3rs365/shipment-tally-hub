@@ -416,3 +416,30 @@ export function useHasAddon(addonType: string) {
   const { data: addons = [] } = usePurchasedAddons();
   return addons.some((a: PurchasedAddon) => a.addon_type === addonType);
 }
+
+// ── WooCommerce Integration ──
+export interface WooIntegration {
+  id: string;
+  company_id: string;
+  store_url: string;
+  consumer_key: string;
+  consumer_secret: string;
+  last_sync_at: string | null;
+  last_sync_order_count: number;
+  last_sync_status: string;
+  last_sync_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useWooIntegration() {
+  return useCompanyQuery<WooIntegration | null>("woo_integration", async (companyId) => {
+    const { data, error } = await supabase
+      .from("woocommerce_integrations")
+      .select("*")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (error) throw error;
+    return data as WooIntegration | null;
+  });
+}
