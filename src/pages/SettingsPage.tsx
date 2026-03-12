@@ -288,7 +288,7 @@ function TeamTab() {
   const { data: invitations = [] } = useQuery<Invitation[]>({
     queryKey: ["invitations", currentCompany?.id],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from("invitations")
         .select("id, invitee_email, role, invite_code, expires_at, accepted_at")
         .eq("company_id", currentCompany!.id)

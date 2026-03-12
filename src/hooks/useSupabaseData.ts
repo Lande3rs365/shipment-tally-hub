@@ -389,7 +389,7 @@ export interface PurchasedAddon {
 
 export function usePurchasedAddons() {
   return useCompanyQuery<PurchasedAddon[]>("purchased_addons", async (companyId) => {
-    const { data, error } = await db
+    const { data, error } = await supabase
       .from("purchased_addons")
       .select("*")
       .eq("company_id", companyId)
