@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor, act } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 
 vi.mock("@/integrations/supabase/client", () => ({
