@@ -34,7 +34,8 @@ export default function LoginPage() {
       redirect_uri: window.location.origin,
     });
     if (error) {
-      toast({ title: "Google login failed", description: error.message, variant: "destructive" });
+      console.error("[login:google]", error);
+      toast({ title: "Google login failed", description: "Something went wrong. Please try again.", variant: "destructive" });
     }
   };
 

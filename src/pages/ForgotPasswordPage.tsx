@@ -22,7 +22,8 @@ export default function ForgotPasswordPage() {
     });
     setLoading(false);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error("[forgot-password]", error);
+      toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
     } else {
       setSent(true);
     }

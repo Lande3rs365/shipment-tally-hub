@@ -233,7 +233,7 @@ export default function ProductsPage() {
       row_type,
       parent_product_id: newProduct.parentId || null,
     });
-    if (error) { toast.error("Failed: " + error.message); return; }
+    if (error) { console.error("[products:add]", error); toast.error("Failed to add product. Please try again."); return; }
     toast.success("Product added.");
     setAddDialogOpen(false);
     setNewProduct({ sku: '', name: '', description: '', parentId: '' });

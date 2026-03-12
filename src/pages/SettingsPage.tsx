@@ -128,7 +128,8 @@ function LocationsTab() {
       .update({ is_active: false })
       .eq("id", loc.id);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error("[settings:location-deactivate]", error);
+      toast({ title: "Error", description: "Failed to deactivate location. Please try again.", variant: "destructive" });
     } else {
       toast({ title: "Location deactivated" });
       queryClient.invalidateQueries({ queryKey: ["stock_locations"] });
