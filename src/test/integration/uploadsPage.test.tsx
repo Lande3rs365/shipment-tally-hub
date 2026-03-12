@@ -121,7 +121,7 @@ describe("UploadsPage", () => {
 
   it("renders the drop zone area", () => {
     renderPage();
-    expect(screen.getByText(/drag & drop/i)).toBeInTheDocument();
+    expect(screen.getByText(/Drop.*files here/)).toBeInTheDocument();
   });
 
   // ── File selection → preview flow (WooCommerce) ──
