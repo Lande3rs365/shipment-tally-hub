@@ -40,7 +40,8 @@ function CompanyDetailsTab() {
     if (error) {
       const msg = error.code === "23505"
         ? "That company code is already taken."
-        : error.message;
+        : "Something went wrong. Please try again.";
+      console.error("[settings:save]", error);
       toast({ title: "Error", description: msg, variant: "destructive" });
     } else {
       setCurrentCompany({
