@@ -2,7 +2,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Package, Truck, Warehouse, Upload,
   AlertTriangle, FileText, ChevronLeft, ChevronRight,
-  ArrowRightLeft, Ship, RotateCcw, LogOut, Building2, ChevronsUpDown, Tag, User, Settings
+  ArrowRightLeft, Ship, RotateCcw, LogOut, Building2, ChevronsUpDown, Tag, User, Settings, Plug
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,7 @@ const navItems = [
   { to: "/stock-movements", icon: ArrowRightLeft, label: "Stock Ledger" },
   { to: "/uploads", icon: Upload, label: "Data Intake" },
   { to: "/exports", icon: FileText, label: "Exports" },
+  { to: "/integrations", icon: Plug, label: "Integrations" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 

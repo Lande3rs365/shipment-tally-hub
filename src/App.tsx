@@ -30,6 +30,7 @@ import ProductsPage from "@/pages/ProductsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
 import BillingPage from "@/pages/BillingPage";
+import IntegrationsPage from "@/pages/IntegrationsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -96,6 +97,7 @@ const App = () => (
                           <Route path="/exports" element={<ExportsPage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/billing" element={<BillingPage />} />
+                          <Route path="/integrations" element={<IntegrationsPage />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </AppLayout>
