@@ -99,7 +99,7 @@ export function useOrderShipments(orderId: string | undefined) {
 // ── Inventory ──
 export function useInventory() {
   return useCompanyQuery<InventoryWithRelations[]>("inventory", async (companyId) => {
-    const { data, error } = await db
+    const { data, error } = await supabase
       .from('inventory')
       .select('*, products(sku, name, reorder_point), stock_locations(name, code)')
       .eq('company_id', companyId);
