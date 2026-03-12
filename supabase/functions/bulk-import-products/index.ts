@@ -34,10 +34,49 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { products, company_id } = await req.json();
+    const body = await req.json();
+    const { products, company_id } = body;
 
-    if (!products || !company_id) {
-      return new Response(JSON.stringify({ error: "Missing products or company_id" }), {
+    if (!Array.isArray(products) || !company_id || typeof company_id !== 'string') {
+      return new Response(JSON.stringify({ error: "Missing or invalid products or company_id" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Cap batch size
+    const MAX_BATCH = 5000;
+    if (products.length > MAX_BATCH) {
+      return new Response(JSON.stringify({ error: `Batch too large. Maximum ${MAX_BATCH} products per request.` }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate each product
+    const VALID_ROW_TYPES = new Set(['parent', 'variant', 'standalone']);
+    const errors: string[] = [];
+    for (let i = 0; i < products.length; i++) {
+      const p = products[i];
+      if (!p || typeof p !== 'object') { errors.push(`Item ${i}: not an object`); continue; }
+      if (typeof p.sku !== 'string' || !p.sku.trim() || p.sku.length > 50) {
+        errors.push(`Item ${i}: sku must be a non-empty string ≤ 50 chars`);
+      }
+      if (typeof p.name !== 'string' || !p.name.trim() || p.name.length > 255) {
+        errors.push(`Item ${i}: name must be a non-empty string ≤ 255 chars`);
+      }
+      if (p.category !== undefined && p.category !== null && (typeof p.category !== 'string' || p.category.length > 100)) {
+        errors.push(`Item ${i}: category must be a string ≤ 100 chars`);
+      }
+      if (p.description !== undefined && p.description !== null && (typeof p.description !== 'string' || p.description.length > 2000)) {
+        errors.push(`Item ${i}: description must be a string ≤ 2000 chars`);
+      }
+      if (!p.row_type || !VALID_ROW_TYPES.has(p.row_type)) {
+        errors.push(`Item ${i}: row_type must be one of parent, variant, standalone`);
+      }
+      if (errors.length >= 10) { errors.push('...and more errors'); break; }
+    }
+
+    if (errors.length > 0) {
+      return new Response(JSON.stringify({ error: "Validation failed", details: errors }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
