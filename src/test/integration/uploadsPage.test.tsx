@@ -371,4 +371,52 @@ describe("UploadsPage", () => {
       );
     });
   });
+
+  // ── File size limit ──
+
+  it("rejects files larger than 20MB with a toast", async () => {
+    renderPage();
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    // Create a small file but override .size to simulate >20MB
+    const oversizedFile = createFile("huge.csv", "a");
+    Object.defineProperty(oversizedFile, "size", { value: 21 * 1024 * 1024 });
+
+    await act(async () => {
+      fireEvent.change(fileInput, { target: { files: [oversizedFile] } });
+    });
+
+    const { toast } = await import("@/hooks/use-toast");
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "File too large", variant: "destructive" })
+      );
+    });
+
+    // Should NOT show import preview
+    expect(screen.queryByText(/Import Preview/)).not.toBeInTheDocument();
+  });
+
+  it("accepts files exactly at 20MB", async () => {
+    const wooCSV = `order_id,status\n1001,processing`;
+    mockReadFileAsText.mockResolvedValue(wooCSV);
+    mockPreviewWoo.mockResolvedValue({
+      newOrders: 1, updatedOrders: 0, newShipments: 0, updatedShipments: 0, onHoldOrders: 0, totalRows: 1,
+    });
+
+    renderPage();
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+
+    const borderlineFile = createFile("exact20mb.csv", "a");
+    Object.defineProperty(borderlineFile, "size", { value: 20 * 1024 * 1024 });
+
+    await act(async () => {
+      fireEvent.change(fileInput, { target: { files: [borderlineFile] } });
+    });
+
+    // Should proceed to preview (not be rejected)
+    await waitFor(() => {
+      expect(screen.getByText(/Import Preview/)).toBeInTheDocument();
+    });
+  });
 });
