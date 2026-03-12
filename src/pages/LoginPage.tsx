@@ -22,7 +22,8 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      console.error("[login]", error);
+      toast({ title: "Login failed", description: "Invalid email or password.", variant: "destructive" });
     } else {
       navigate("/");
     }
