@@ -27,8 +27,8 @@ async function fetchAllExisting(table: string, companyId: string, column: string
   const map = new Map<string, string>();
   for (let i = 0; i < values.length; i += BATCH_SIZE) {
     const chunk = values.slice(i, i + BATCH_SIZE);
-    const { data } = await supabase.from(table).select(`id, ${column}`).eq("company_id", companyId).in(column, chunk);
-    for (const row of (data || [])) {
+    const { data } = await (supabase as any).from(table).select(`id, ${column}`).eq("company_id", companyId).in(column, chunk);
+    for (const row of (data || []) as any[]) {
       map.set(row[column], row.id);
     }
   }

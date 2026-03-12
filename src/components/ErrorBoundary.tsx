@@ -34,11 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <p className="text-sm text-muted-foreground">
               An unexpected error occurred. Try refreshing the page.
             </p>
-            {this.state.error && (
-              <pre className="text-xs text-left bg-muted rounded-md p-3 overflow-auto text-muted-foreground">
-                {this.state.error.message}
-              </pre>
-            )}
+            {/* Error details logged to console only — not shown to users */}
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors"

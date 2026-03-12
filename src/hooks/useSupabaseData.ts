@@ -71,10 +71,10 @@ export function useOrderEvents(orderId: string | undefined) {
       const { data, error } = await supabase
         .from('order_events')
         .select('*')
-        .eq('order_id', orderId)
+        .eq('order_id', orderId!)
         .order('created_at', { ascending: true });
       if (error) throw error;
-      return data || [];
+      return (data || []) as unknown as OrderEvent[];
     },
     enabled: !!orderId && !!currentCompany?.id,
   });
@@ -235,7 +235,7 @@ export function useDataIntakeLogs() {
       .eq('company_id', companyId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data || [];
+    return (data || []) as unknown as DataIntakeLog[];
   });
 }
 
@@ -288,7 +288,7 @@ export function useImportSkuFramework() {
           return {
             company_id: companyId, sku: v.sku, name: v.name,
             category: v.category, row_type: v.row_type, description: v.description,
-            parent_product_id: parentId,
+            parent_product_id: parentId as string | undefined,
           };
         });
         const { data: inserted, error } = await supabase.from('products').insert(batch).select('sku, id');

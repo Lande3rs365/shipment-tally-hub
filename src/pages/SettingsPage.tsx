@@ -40,7 +40,8 @@ function CompanyDetailsTab() {
     if (error) {
       const msg = error.code === "23505"
         ? "That company code is already taken."
-        : error.message;
+        : "Something went wrong. Please try again.";
+      console.error("[settings:save]", error);
       toast({ title: "Error", description: msg, variant: "destructive" });
     } else {
       setCurrentCompany({
@@ -110,7 +111,8 @@ function LocationsTab() {
     });
     setAdding(false);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error("[settings:location-add]", error);
+      toast({ title: "Error", description: "Failed to add location. Please try again.", variant: "destructive" });
     } else {
       toast({ title: "Location added" });
       setNewName("");
@@ -126,7 +128,8 @@ function LocationsTab() {
       .update({ is_active: false })
       .eq("id", loc.id);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error("[settings:location-deactivate]", error);
+      toast({ title: "Error", description: "Failed to deactivate location. Please try again.", variant: "destructive" });
     } else {
       toast({ title: "Location deactivated" });
       queryClient.invalidateQueries({ queryKey: ["stock_locations"] });
@@ -266,13 +269,13 @@ function TeamTab() {
   const { data: members = [] } = useQuery<TeamMember[]>({
     queryKey: ["team_members", currentCompany?.id],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from("user_companies")
         .select("id, user_id, role, created_at, profile:profiles!user_companies_user_id_fkey(display_name, avatar_url)")
         .eq("company_id", currentCompany!.id);
       if (error) {
         // If the join fails, fetch without profiles
-        const { data: fallback, error: fbErr } = await db
+        const { data: fallback, error: fbErr } = await supabase
           .from("user_companies")
           .select("id, user_id, role, created_at")
           .eq("company_id", currentCompany!.id);
@@ -288,7 +291,7 @@ function TeamTab() {
   const { data: invitations = [] } = useQuery<Invitation[]>({
     queryKey: ["invitations", currentCompany?.id],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from("invitations")
         .select("id, invitee_email, role, invite_code, expires_at, accepted_at")
         .eq("company_id", currentCompany!.id)

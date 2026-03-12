@@ -30,7 +30,8 @@ export default function SignupPage() {
     });
     setLoading(false);
     if (error) {
-      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      console.error("[signup]", error);
+      toast({ title: "Signup failed", description: "Something went wrong. Please try again.", variant: "destructive" });
     } else {
       navigate("/onboarding", { replace: true });
     }
@@ -41,7 +42,8 @@ export default function SignupPage() {
       redirect_uri: window.location.origin,
     });
     if (error) {
-      toast({ title: "Google signup failed", description: error.message, variant: "destructive" });
+      console.error("[signup:google]", error);
+      toast({ title: "Google signup failed", description: "Something went wrong. Please try again.", variant: "destructive" });
     }
   };
 

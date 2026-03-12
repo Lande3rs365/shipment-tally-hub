@@ -12,8 +12,8 @@ import { toast } from "@/hooks/use-toast";
 export default function OrderDetailPage() {
   const { orderId } = useParams();
   const { data: order, isLoading } = useOrder(orderId);
-  const { data: events = [] } = useOrderEvents(order?.id);
-  const { data: shipments = [] } = useOrderShipments(order?.id);
+  const { data: events = [] } = useOrderEvents(order?.id) as { data: any[] };
+  const { data: shipments = [] } = useOrderShipments(order?.id) as { data: any[] };
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [note, setNote] = useState("");

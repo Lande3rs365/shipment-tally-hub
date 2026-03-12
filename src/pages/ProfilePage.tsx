@@ -50,7 +50,8 @@ export default function ProfilePage() {
       .eq("user_id", user.id);
     setSaving(false);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error("[profile:save]", error);
+      toast({ title: "Error", description: "Failed to update profile. Please try again.", variant: "destructive" });
     } else {
       toast({ title: "Profile updated" });
     }

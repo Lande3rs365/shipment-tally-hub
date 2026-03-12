@@ -48,7 +48,8 @@ export default function ResetPasswordPage() {
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error("[reset-password]", error);
+      toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
     } else {
       toast({ title: "Password updated", description: "You can now sign in with your new password." });
       navigate("/login", { replace: true });

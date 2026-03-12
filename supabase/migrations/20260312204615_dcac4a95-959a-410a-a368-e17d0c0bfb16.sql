@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Authenticated users can create companies" ON public.companies;
