@@ -44,8 +44,7 @@ async function processInChunks<T>(items: T[], chunkSize: number, fn: (chunk: T[]
     try {
       const count = await fn(chunk);
       processed += count;
-    } catch (err) {
-      console.error("Chunk error:", err);
+    } catch {
       errors += chunk.length;
     }
   }
@@ -150,8 +149,7 @@ export async function importWooCommerceOrders(orders: ParsedOrder[], companyId: 
       }
 
       totalProcessed += chunk.length;
-    } catch (err) {
-      console.error("Batch insert error:", err);
+    } catch {
       totalErrors += chunk.length;
     }
     onProgress?.(totalProcessed, totalErrors);
@@ -180,8 +178,7 @@ export async function importWooCommerceOrders(orders: ParsedOrder[], companyId: 
         }
 
         return true;
-      } catch (err) {
-        console.error(`Error updating order ${order.order_number}:`, err);
+      } catch {
         return false;
       }
     });
@@ -197,8 +194,7 @@ export async function importWooCommerceOrders(orders: ParsedOrder[], companyId: 
       description: "Order updated via WooCommerce CSV import", created_by: userId,
     })).filter(e => e.order_id);
     if (eventRows.length > 0) {
-      const { error: evtErr } = await db.from("order_events").insert(eventRows);
-      if (evtErr) console.error("Event insert error:", evtErr);
+      await db.from("order_events").insert(eventRows);
     }
 
     onProgress?.(totalProcessed, totalErrors);
@@ -252,8 +248,8 @@ export async function importShipments(shipments: ParsedShipment[], companyId: st
       for (const row of (inserted || [])) {
         existingOrderMap.set(row.order_number, row.id);
       }
-    } catch (err) {
-      console.error("Batch order placeholder error:", err);
+    } catch {
+      // placeholder orders couldn't be created; affected shipments will be skipped
     }
   }
 
@@ -277,8 +273,7 @@ export async function importShipments(shipments: ParsedShipment[], companyId: st
       try {
         await db.from("shipments").insert(insertData);
         totalProcessed += insertData.length;
-      } catch (err) {
-        console.error("Batch shipment insert error:", err);
+      } catch {
         totalErrors += insertData.length;
       }
     }
@@ -341,8 +336,7 @@ export async function importMasterRows(rows: ParsedMasterRow[], companyId: strin
         existingOrderMap.set(row.order_number, row.id);
       }
       totalProcessed += chunk.length;
-    } catch (err) {
-      console.error("Batch master order insert error:", err);
+    } catch {
       totalErrors += chunk.length;
     }
     onProgress?.(totalProcessed, totalErrors);
@@ -380,8 +374,8 @@ export async function importMasterRows(rows: ParsedMasterRow[], companyId: strin
         delivered_date: r.tracking_status === "delivered" ? r.tracking_date : null,
         shipping_cost: r.shipping_cost,
       })));
-    } catch (err) {
-      console.error("Batch shipment insert error:", err);
+    } catch {
+      // shipment insert failed; counted as skipped
     }
   }
 
@@ -406,8 +400,7 @@ export async function importMasterRows(rows: ParsedMasterRow[], companyId: strin
     description: `Order via Master XLSX import`, created_by: userId,
   })).filter(e => e.order_id);
   for (let i = 0; i < allEvents.length; i += BATCH_SIZE) {
-    const { error: evtErr } = await db.from("order_events").insert(allEvents.slice(i, i + BATCH_SIZE));
-    if (evtErr) console.error("Event insert error:", evtErr);
+    await db.from("order_events").insert(allEvents.slice(i, i + BATCH_SIZE));
   }
 
   // 6. Handle on-hold exceptions
@@ -459,7 +452,6 @@ async function createOnHoldExceptions(
     }));
 
   for (let i = 0; i < toCreate.length; i += BATCH_SIZE) {
-    const { error: excErr } = await db.from("exceptions").insert(toCreate.slice(i, i + BATCH_SIZE));
-    if (excErr) console.error("Exception insert error:", excErr);
+    await db.from("exceptions").insert(toCreate.slice(i, i + BATCH_SIZE));
   }
 }

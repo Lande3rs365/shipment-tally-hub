@@ -13,13 +13,18 @@ export default function CompanyGate({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!user || loading) return;
     const check = async () => {
-      const { data } = await (supabase as any)
-        .from("profiles")
-        .select("onboarding_completed")
-        .eq("user_id", user.id)
-        .single();
-      setOnboardingCompleted(data?.onboarding_completed ?? false);
-      setOnboardingChecked(true);
+      try {
+        const { data } = await (supabase as any)
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("user_id", user.id)
+          .single();
+        setOnboardingCompleted(data?.onboarding_completed ?? false);
+      } catch {
+        setOnboardingCompleted(false);
+      } finally {
+        setOnboardingChecked(true);
+      }
     };
     check();
   }, [user, loading]);

@@ -166,8 +166,6 @@ export function parseWooCommerceCSV(csvText: string): ParsedOrder[] {
     header: true, skipEmptyLines: true,
     transformHeader: (h) => h.trim().toLowerCase().replace(/\s+/g, "_"),
   });
-  if (result.errors.length > 0) console.warn("CSV parse warnings:", result.errors);
-
   return result.data.map((row) => {
     const wooStatus = normalizeStatus(row.status || "");
     const lineItems: ParsedLineItem[] = [];
@@ -200,8 +198,6 @@ export function parseShipmentCSV(csvText: string): ParsedShipment[] {
     header: true, skipEmptyLines: true,
     transformHeader: (h) => h.trim().toLowerCase().replace(/\s+/g, "_"),
   });
-  if (result.errors.length > 0) console.warn("CSV parse warnings:", result.errors);
-
   return result.data.map((row) => {
     // Handle both Pirate Ship headers and generic shipment headers
     const orderNum = (row.order_id || row.order_number || "").toString().trim();

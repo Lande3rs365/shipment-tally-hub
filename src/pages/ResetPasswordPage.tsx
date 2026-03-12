@@ -29,7 +29,7 @@ export default function ResetPasswordPage() {
     // already resolved by the time this mounts).
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setReady(true);
-    });
+    }).catch(() => {});
 
     return () => subscription.unsubscribe();
   }, []);
