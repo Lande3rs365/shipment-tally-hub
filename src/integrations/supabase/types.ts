@@ -1133,7 +1133,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      get_user_company_ids: { Args: { _user_id: string }; Returns: string[] }
+      get_user_company_ids: { Args: { _user_id?: string }; Returns: string[] }
       user_belongs_to_company: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
