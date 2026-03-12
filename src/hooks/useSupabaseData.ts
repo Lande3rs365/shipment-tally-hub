@@ -226,7 +226,7 @@ export function useStockLocations() {
 // ── Data Intake Logs ──
 export function useDataIntakeLogs() {
   return useCompanyQuery<DataIntakeLog[]>("data_intake_logs", async (companyId) => {
-    const { data, error } = await db
+    const { data, error } = await supabase
       .from('data_intake_logs')
       .select('*')
       .eq('company_id', companyId)
