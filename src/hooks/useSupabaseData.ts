@@ -212,7 +212,7 @@ export function useProducts() {
 // ── Locations ──
 export function useStockLocations() {
   return useCompanyQuery<StockLocation[]>("stock_locations", async (companyId) => {
-    const { data, error } = await db
+    const { data, error } = await supabase
       .from('stock_locations')
       .select('*')
       .eq('company_id', companyId)
