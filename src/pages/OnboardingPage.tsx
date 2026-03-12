@@ -82,7 +82,7 @@ export default function OnboardingPage() {
       // Check if onboarding is completed
       const checkOnboarding = async () => {
         if (!user) return;
-        const { data } = await (supabase as any)
+        const { data } = await supabase
           .from("profiles")
           .select("onboarding_completed")
           .eq("user_id", user.id)
@@ -108,11 +108,10 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
-      const db = supabase as any;
       const companyId = crypto.randomUUID();
 
       // 1. Create company + owner
-      const { error: createError } = await db.rpc("create_company_with_owner", {
+      const { error: createError } = await supabase.rpc("create_company_with_owner", {
         _company_id: companyId,
         _company_name: companyName.trim(),
         _company_code: companyCode.trim().toUpperCase(),
@@ -120,7 +119,7 @@ export default function OnboardingPage() {
       if (createError) throw createError;
 
       // 2. Create a default stock location
-      const { error: locError } = await db.from("stock_locations").insert({
+      const { error: locError } = await supabase.from("stock_locations").insert({
         company_id: companyId,
         name: "Primary Warehouse",
         code: "WH-01",
@@ -129,7 +128,7 @@ export default function OnboardingPage() {
       if (locError) throw locError;
 
       // 3. Update profile with onboarding data
-      const { error: profileError } = await db
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({
           display_name: displayName.trim() || user.email,
@@ -159,7 +158,6 @@ export default function OnboardingPage() {
       setStep(TOTAL_STEPS); // done state
       setTimeout(() => navigate("/", { replace: true }), 1500);
     } catch (err: any) {
-      console.error("Onboarding error:", err);
       const message = err?.code === "23505"
         ? "That company code is already taken. Please choose a different one."
         : err?.message || "Something went wrong. Please try again.";

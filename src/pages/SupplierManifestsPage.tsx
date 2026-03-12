@@ -12,6 +12,7 @@ import {
   Ship, Search, Package, AlertTriangle, Clock, CheckCircle,
   Plus, X, Truck, Calendar
 } from "lucide-react";
+import { toast } from "sonner";
 
 const statusFilters = ['all', 'pending', 'partially_received', 'received', 'closed'] as const;
 
@@ -77,36 +78,43 @@ export default function SupplierManifestsPage() {
     e.preventDefault();
     if (!currentCompany) return;
 
-    const { data: manifest } = await (supabase as any).from('manufacturer_manifests').insert({
-      company_id: currentCompany.id,
-      manifest_number: formData.manifestNumber || null,
-      manufacturer_name: formData.manufacturerName,
-      status: 'pending',
-      request_date: formData.requestDate || null,
-      expected_date: formData.expectedDate || null,
-      shipment_date: formData.shipmentDate || null,
-      tracking_number: formData.trackingNumber || null,
-      eta: formData.eta || null,
-      location_id: locations[0]?.id || null,
-      notes: formData.notes || null,
-    }).select('id').single();
+    try {
+      const { data: manifest, error } = await supabase.from('manufacturer_manifests').insert({
+        company_id: currentCompany.id,
+        manifest_number: formData.manifestNumber || null,
+        manufacturer_name: formData.manufacturerName,
+        status: 'pending',
+        request_date: formData.requestDate || null,
+        expected_date: formData.expectedDate || null,
+        shipment_date: formData.shipmentDate || null,
+        tracking_number: formData.trackingNumber || null,
+        eta: formData.eta || null,
+        location_id: locations[0]?.id || null,
+        notes: formData.notes || null,
+      }).select('id').single();
 
-    if (manifest) {
-      const items = lineItems.filter(l => l.productId && l.expectedQty > 0).map(l => ({
-        manifest_id: manifest.id,
-        product_id: l.productId,
-        sku: l.sku,
-        expected_qty: l.expectedQty,
-      }));
-      if (items.length > 0) {
-        await (supabase as any).from('manufacturer_manifest_items').insert(items);
+      if (error) throw error;
+
+      if (manifest) {
+        const items = lineItems.filter(l => l.productId && l.expectedQty > 0).map(l => ({
+          manifest_id: manifest.id,
+          product_id: l.productId,
+          sku: l.sku,
+          expected_qty: l.expectedQty,
+        }));
+        if (items.length > 0) {
+          const { error: itemsError } = await supabase.from('manufacturer_manifest_items').insert(items);
+          if (itemsError) throw itemsError;
+        }
       }
-    }
 
-    queryClient.invalidateQueries({ queryKey: ['manufacturer_manifests'] });
-    setShowNewForm(false);
-    setFormData({ manufacturerName: '', manifestNumber: '', requestDate: '', expectedDate: '', shipmentDate: '', trackingNumber: '', eta: '', notes: '' });
-    setLineItems([{ productId: '', sku: '', expectedQty: 0 }]);
+      queryClient.invalidateQueries({ queryKey: ['manufacturer_manifests'] });
+      setShowNewForm(false);
+      setFormData({ manufacturerName: '', manifestNumber: '', requestDate: '', expectedDate: '', shipmentDate: '', trackingNumber: '', eta: '', notes: '' });
+      setLineItems([{ productId: '', sku: '', expectedQty: 0 }]);
+    } catch (err) {
+      toast.error('Failed to create manifest');
+    }
   };
 
   // Receive items state
@@ -123,71 +131,75 @@ export default function SupplierManifestsPage() {
     if (!currentCompany) return;
     const primaryLocation = locations[0];
 
-    for (const item of items) {
-      const qty = receiveQtys[item.id];
-      if (!qty) continue;
-      const shortQty = Math.max(0, item.expected_qty - qty.received - qty.damaged);
-      const status = qty.received >= item.expected_qty ? 'received'
-        : qty.received > 0 ? (shortQty > 0 ? 'short' : 'partial')
-        : 'pending';
+    try {
+      for (const item of items) {
+        const qty = receiveQtys[item.id];
+        if (!qty) continue;
+        const shortQty = Math.max(0, item.expected_qty - qty.received - qty.damaged);
+        const status = qty.received >= item.expected_qty ? 'received'
+          : qty.received > 0 ? (shortQty > 0 ? 'short' : 'partial')
+          : 'pending';
 
-      await (supabase as any).from('manufacturer_manifest_items').update({
-        received_qty: qty.received,
-        damaged_qty: qty.damaged,
-        short_qty: shortQty,
-        status,
-      }).eq('id', item.id);
+        const { error: updateErr } = await supabase.from('manufacturer_manifest_items').update({
+          received_qty: qty.received,
+          damaged_qty: qty.damaged,
+          short_qty: shortQty,
+          status,
+        }).eq('id', item.id);
+        if (updateErr) throw updateErr;
 
-      // Create stock movement for received qty
-      if (qty.received > 0 && item.product_id) {
-        await (supabase as any).from('stock_movements').insert({
-          company_id: currentCompany.id,
-          product_id: item.product_id,
-          sku: item.sku,
-          direction: 'IN',
-          movement_type: 'purchase_receive',
-          quantity: qty.received,
-          to_location_id: primaryLocation?.id || null,
-          linked_manifest_id: manifestId,
-          reason_code: 'Manufacturer inbound receipt',
-          performed_by: user?.id || null,
-        });
-      }
+        if (qty.received > 0 && item.product_id) {
+          const { error: mvErr } = await supabase.from('stock_movements').insert({
+            company_id: currentCompany.id,
+            product_id: item.product_id,
+            sku: item.sku,
+            direction: 'IN',
+            movement_type: 'purchase_receive',
+            quantity: qty.received,
+            to_location_id: primaryLocation?.id || null,
+            linked_manifest_id: manifestId,
+            reason_code: 'Manufacturer inbound receipt',
+            performed_by: user?.id || null,
+          });
+          if (mvErr) throw mvErr;
+        }
 
-      // Update inventory
-      if (primaryLocation && item.product_id && qty.received > 0) {
-        const { data: existing } = await (supabase as any)
-          .from('inventory')
-          .select('id, on_hand, available, damaged')
-          .eq('product_id', item.product_id)
-          .eq('location_id', primaryLocation.id)
-          .maybeSingle();
+        if (primaryLocation && item.product_id && qty.received > 0) {
+          const { data: existing } = await supabase
+            .from('inventory')
+            .select('id, on_hand, available, damaged')
+            .eq('product_id', item.product_id)
+            .eq('location_id', primaryLocation.id)
+            .maybeSingle();
 
-        if (existing) {
-          await (supabase as any).from('inventory').update({
-            on_hand: existing.on_hand + qty.received,
-            available: existing.available + qty.received,
-            damaged: existing.damaged + qty.damaged,
-          }).eq('id', existing.id);
+          if (existing) {
+            const { error: invErr } = await supabase.from('inventory').update({
+              on_hand: existing.on_hand + qty.received,
+              available: existing.available + qty.received,
+              damaged: existing.damaged + qty.damaged,
+            }).eq('id', existing.id);
+            if (invErr) throw invErr;
+          }
         }
       }
+
+      const allReceived = items.every(i => (receiveQtys[i.id]?.received || 0) >= i.expected_qty);
+      const someReceived = items.some(i => (receiveQtys[i.id]?.received || 0) > 0);
+      const newStatus = allReceived ? 'received' : someReceived ? 'partially_received' : 'pending';
+
+      const { error: manifestErr } = await supabase.from('manufacturer_manifests').update({
+        status: newStatus,
+        received_date: someReceived ? new Date().toISOString() : null,
+      }).eq('id', manifestId);
+      if (manifestErr) throw manifestErr;
+
+      queryClient.invalidateQueries({ queryKey: ['manufacturer_manifests'] });
+      queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      setReceivingId(null);
+    } catch (err) {
+      toast.error('Failed to record receipt');
     }
-
-    // Update manifest status
-    const allItems = items.map(i => receiveQtys[i.id]);
-    const allReceived = items.every(i => (receiveQtys[i.id]?.received || 0) >= i.expected_qty);
-    const someReceived = items.some(i => (receiveQtys[i.id]?.received || 0) > 0);
-    const newStatus = allReceived ? 'received' : someReceived ? 'partially_received' : 'pending';
-
-    await (supabase as any).from('manufacturer_manifests').update({
-      status: newStatus,
-      received_date: someReceived ? new Date().toISOString() : null,
-    }).eq('id', manifestId);
-
-    queryClient.invalidateQueries({ queryKey: ['manufacturer_manifests'] });
-    queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
-    queryClient.invalidateQueries({ queryKey: ['inventory'] });
-    setReceivingId(null);
   };
 
   if (!currentCompany) return <EmptyState icon={Ship} title="No company selected" />;

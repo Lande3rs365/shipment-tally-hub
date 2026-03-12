@@ -18,8 +18,6 @@ const ROLES = [
   { value: "admin", label: "Admin" },
 ];
 
-const db = supabase as any;
-
 interface Invitation {
   id: string;
   invitee_email: string;
@@ -42,7 +40,7 @@ export default function InviteMemberDialog() {
   const { data: invitations = [], isLoading } = useQuery<Invitation[]>({
     queryKey: ["invitations", currentCompany?.id],
     queryFn: async () => {
-      const { data, error } = await db
+      const { data, error } = await supabase
         .from("invitations")
         .select("*")
         .eq("company_id", currentCompany!.id)
@@ -62,7 +60,7 @@ export default function InviteMemberDialog() {
 
     setSending(true);
     try {
-      const { error } = await db.from("invitations").insert({
+      const { error } = await supabase.from("invitations").insert({
         company_id: currentCompany.id,
         invitee_email: trimmedEmail,
         role,
@@ -90,7 +88,7 @@ export default function InviteMemberDialog() {
 
   const handleRevoke = async (id: string) => {
     try {
-      await db.from("invitations").delete().eq("id", id);
+      await supabase.from("invitations").delete().eq("id", id);
       queryClient.invalidateQueries({ queryKey: ["invitations", currentCompany?.id] });
       toast({ title: "Invitation revoked" });
     } catch {

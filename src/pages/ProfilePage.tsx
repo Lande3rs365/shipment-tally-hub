@@ -19,16 +19,21 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return;
     const fetchProfile = async () => {
-      const { data } = await (supabase as any)
-        .from("profiles")
-        .select("display_name, job_title")
-        .eq("user_id", user.id)
-        .single();
-      if (data) {
-        setDisplayName(data.display_name || "");
-        setJobTitle(data.job_title || "");
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("display_name, job_title")
+          .eq("user_id", user.id)
+          .single();
+        if (data) {
+          setDisplayName(data.display_name || "");
+          setJobTitle(data.job_title || "");
+        }
+      } catch {
+        // profile load failure is non-fatal; user can still edit fields
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchProfile();
   }, [user]);
@@ -36,7 +41,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("profiles")
       .update({
         display_name: displayName.trim() || user.email,

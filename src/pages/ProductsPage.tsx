@@ -206,7 +206,7 @@ export default function ProductsPage() {
 
   const saveEdit = async () => {
     if (!editing) return;
-    const { error } = await (supabase as any).from("products").update({
+    const { error } = await supabase.from("products").update({
       name: editing.name.trim() || editing.id,
       description: editing.description.trim() || null,
     }).eq("id", editing.id);
@@ -224,7 +224,7 @@ export default function ProductsPage() {
     const category = tab.categories[0] || 'other';
     const row_type = newProduct.parentId ? 'variant' : (tab.hierarchical ? 'parent' : 'standalone');
 
-    const { error } = await (supabase as any).from("products").insert({
+    const { error } = await supabase.from("products").insert({
       company_id: currentCompany.id,
       sku: newProduct.sku.trim(),
       name: newProduct.name.trim(),
@@ -254,7 +254,7 @@ export default function ProductsPage() {
     const confirmed = window.confirm(`Delete all ${count} products? This cannot be undone.`);
     if (!confirmed) return;
     try {
-      const { error } = await (supabase as any).from("products").delete().eq("company_id", currentCompany.id);
+      const { error } = await supabase.from("products").delete().eq("company_id", currentCompany.id);
       if (error) throw error;
       toast.success(`Deleted ${count} products.`);
       queryClient.invalidateQueries({ queryKey: ["products"] });

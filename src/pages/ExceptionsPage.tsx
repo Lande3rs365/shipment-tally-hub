@@ -28,8 +28,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const db = supabase as any;
-
 const REASON_OPTIONS = [
   { value: "oos", label: "OOS", color: "bg-destructive/15 text-destructive" },
   { value: "refund_req", label: "Refund Req", color: "bg-orange-500/15 text-orange-600" },
@@ -154,14 +152,13 @@ export default function ExceptionsPage() {
     setBulkApplying(true);
     try {
       const ids = Array.from(selected);
-      const { error } = await db.from("exceptions").update({ reason }).in("id", ids);
+      const { error } = await supabase.from("exceptions").update({ reason }).in("id", ids);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ["exceptions"] });
       const label = REASON_OPTIONS.find(r => r.value === reason)?.label || reason;
       toast({ title: `Set "${label}" on ${ids.length} exception${ids.length > 1 ? "s" : ""}` });
       setSelected(new Set());
     } catch (err: any) {
-      console.error("Bulk reason update failed:", err);
       toast({ title: "Failed to update", description: err.message, variant: "destructive" });
     }
     setBulkApplying(false);

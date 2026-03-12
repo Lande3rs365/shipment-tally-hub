@@ -10,8 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle2, XCircle, TicketCheck } from "lucide-react";
 
-const db = supabase as any;
-
 interface InviteResult {
   success: boolean;
   message?: string;
@@ -40,7 +38,7 @@ export default function AcceptInvitePage() {
   const acceptByToken = async (t: string) => {
     setLoading(true);
     try {
-      const { data, error } = await db.rpc("accept_invitation_by_token", { _token: t });
+      const { data, error } = await supabase.rpc("accept_invitation_by_token", { _token: t });
       if (error) throw error;
       handleResult(data);
     } catch (err: any) {
@@ -55,7 +53,7 @@ export default function AcceptInvitePage() {
     if (!inviteCode.trim()) return;
     setLoading(true);
     try {
-      const { data, error } = await db.rpc("accept_invitation_by_code", { _code: inviteCode.trim() });
+      const { data, error } = await supabase.rpc("accept_invitation_by_code", { _code: inviteCode.trim() });
       if (error) throw error;
       handleResult(data);
     } catch (err: any) {
@@ -72,7 +70,7 @@ export default function AcceptInvitePage() {
       // Fetch the company and switch to it
       setTimeout(async () => {
         try {
-          const { data: companyData, error } = await db
+          const { data: companyData, error } = await supabase
             .from("companies")
             .select("*")
             .eq("id", data.company_id)
@@ -81,8 +79,7 @@ export default function AcceptInvitePage() {
           if (companyData) {
             setCurrentCompany(companyData);
           }
-        } catch (err: any) {
-          console.error("Failed to load company after invite:", err);
+        } catch {
           toast({ title: "Could not load company", description: "You've joined, but please refresh the page.", variant: "destructive" });
         } finally {
           navigate("/", { replace: true });

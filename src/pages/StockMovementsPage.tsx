@@ -11,6 +11,7 @@ import {
   Search, ArrowRightLeft, Plus, PackagePlus, PackageMinus
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 type DirFilter = 'ALL' | 'IN' | 'OUT' | 'MOVE' | 'ADJUST';
 type AdjCategory = 'stock-in' | 'stock-out' | 'neutral';
@@ -71,22 +72,26 @@ export default function StockMovementsPage() {
     if (!currentCompany) return;
     const product = products.find(p => p.id === form.productId);
 
-    await (supabase as any).from('stock_movements').insert({
-      company_id: currentCompany.id,
-      product_id: form.productId,
-      sku: product?.sku || null,
-      direction: catToDirection[form.category],
-      movement_type: `manual_${form.reason.toLowerCase().replace(/\s+/g, '_')}`,
-      quantity: form.quantity,
-      reason_code: form.reason,
-      notes: form.notes || null,
-      performed_by: user?.id || null,
-    });
-
-    queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
-    queryClient.invalidateQueries({ queryKey: ['inventory'] });
-    setForm({ productId: '', category: 'stock-in', reason: '', quantity: 1, notes: '' });
-    setShowAdjForm(false);
+    try {
+      const { error } = await supabase.from('stock_movements').insert({
+        company_id: currentCompany.id,
+        product_id: form.productId,
+        sku: product?.sku || null,
+        direction: catToDirection[form.category],
+        movement_type: `manual_${form.reason.toLowerCase().replace(/\s+/g, '_')}`,
+        quantity: form.quantity,
+        reason_code: form.reason,
+        notes: form.notes || null,
+        performed_by: user?.id || null,
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['stock_movements'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory'] });
+      setForm({ productId: '', category: 'stock-in', reason: '', quantity: 1, notes: '' });
+      setShowAdjForm(false);
+    } catch {
+      toast.error('Failed to save adjustment');
+    }
   };
 
   if (!currentCompany) return <EmptyState icon={ArrowRightLeft} title="No company selected" />;

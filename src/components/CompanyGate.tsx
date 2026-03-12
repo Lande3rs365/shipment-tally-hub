@@ -14,7 +14,7 @@ export default function CompanyGate({ children }: { children: React.ReactNode })
     if (!user || loading) return;
     const check = async () => {
       try {
-        const { data } = await (supabase as any)
+        const { data } = await supabase
           .from("profiles")
           .select("onboarding_completed")
           .eq("user_id", user.id)

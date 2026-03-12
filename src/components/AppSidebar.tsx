@@ -44,7 +44,7 @@ export default function AppSidebar() {
   useEffect(() => {
     if (!user) return;
     const fetch = async () => {
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from("profiles")
         .select("display_name, job_title")
         .eq("user_id", user.id)

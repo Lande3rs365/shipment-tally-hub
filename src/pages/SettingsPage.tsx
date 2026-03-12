@@ -22,8 +22,6 @@ import { useExtraSeats } from "@/hooks/useSupabaseData";
 import { Coffee } from "lucide-react";
 import type { StockLocation } from "@/types/database";
 
-const db = supabase as any;
-
 // ─── Company Details Tab ────────────────────────────────────────────
 function CompanyDetailsTab() {
   const { currentCompany, setCurrentCompany } = useCompany();
@@ -34,7 +32,7 @@ function CompanyDetailsTab() {
   const handleSave = async () => {
     if (!currentCompany) return;
     setSaving(true);
-    const { error } = await db
+    const { error } = await supabase
       .from("companies")
       .update({ name: name.trim(), code: code.trim().toUpperCase() })
       .eq("id", currentCompany.id);
@@ -104,7 +102,7 @@ function LocationsTab() {
   const handleAdd = async () => {
     if (!currentCompany || !newName.trim() || !newCode.trim()) return;
     setAdding(true);
-    const { error } = await db.from("stock_locations").insert({
+    const { error } = await supabase.from("stock_locations").insert({
       company_id: currentCompany.id,
       name: newName.trim(),
       code: newCode.trim().toUpperCase(),
@@ -123,7 +121,7 @@ function LocationsTab() {
   };
 
   const handleDeactivate = async (loc: StockLocation) => {
-    const { error } = await db
+    const { error } = await supabase
       .from("stock_locations")
       .update({ is_active: false })
       .eq("id", loc.id);
@@ -306,7 +304,7 @@ function TeamTab() {
     if (!currentCompany || !user) return;
     setSending(true);
     try {
-      const { error } = await db.from("invitations").insert({
+      const { error } = await supabase.from("invitations").insert({
         company_id: currentCompany.id,
         invitee_email: email.trim().toLowerCase(),
         role,
@@ -330,7 +328,7 @@ function TeamTab() {
   };
 
   const handleRevoke = async (id: string) => {
-    await db.from("invitations").delete().eq("id", id);
+    await supabase.from("invitations").delete().eq("id", id);
     queryClient.invalidateQueries({ queryKey: ["invitations", currentCompany?.id] });
     toast({ title: "Invitation revoked" });
   };

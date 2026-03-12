@@ -182,7 +182,7 @@ export default function ReturnsPage() {
       const item = matchedOrder.order_items?.find((i: any) => i.id === selectedItemId);
       if (!item) return;
 
-      const { data } = await (supabase as any)
+      const { data } = await supabase
         .from('returns')
         .select('id, return_number')
         .eq('company_id', currentCompany.id)
@@ -196,7 +196,7 @@ export default function ReturnsPage() {
         setDuplicateWarning('');
       }
     };
-    checkDuplicate();
+    checkDuplicate().catch(() => setDuplicateWarning(''));
   }, [selectedItemId, matchedOrder, currentCompany]);
 
   const canProceed = matchedOrder && selectedItemId && reason && quantity > 0;
@@ -224,7 +224,7 @@ export default function ReturnsPage() {
 
     try {
       // 1. Insert return record
-      const { data: returnRecord, error: retErr } = await (supabase as any).from('returns').insert({
+      const { data: returnRecord, error: retErr } = await supabase.from('returns').insert({
         company_id: currentCompany.id,
         order_id: matchedOrder.id,
         return_number: `RET-${Date.now()}`,
@@ -250,7 +250,7 @@ export default function ReturnsPage() {
           : stockOutcome === 'quarantine' ? 'return_quarantine'
           : 'return_warranty';
 
-        await (supabase as any).from('stock_movements').insert({
+        await supabase.from('stock_movements').insert({
           company_id: currentCompany.id,
           product_id: matchedItem.product_id,
           sku: matchedItem.sku || null,
@@ -266,7 +266,7 @@ export default function ReturnsPage() {
         });
 
         if (primaryLocation) {
-          const { data: existing } = await (supabase as any)
+          const { data: existing } = await supabase
             .from('inventory')
             .select('id, on_hand, available, damaged')
             .eq('product_id', matchedItem.product_id)
@@ -283,20 +283,20 @@ export default function ReturnsPage() {
               updates.damaged = existing.damaged + quantity;
             }
             if (Object.keys(updates).length > 0) {
-              await (supabase as any).from('inventory').update(updates).eq('id', existing.id);
+              await supabase.from('inventory').update(updates).eq('id', existing.id);
             }
           }
         }
       }
 
       // 3. Update order status
-      await (supabase as any)
+      await supabase
         .from('orders')
         .update({ status: newOrderStatus, woo_status: newOrderStatus })
         .eq('id', matchedOrder.id);
 
       // 4. Insert order event audit log
-      await (supabase as any).from('order_events').insert({
+      await supabase.from('order_events').insert({
         order_id: matchedOrder.id,
         event_type: 'return_processed',
         description: `Return processed: ${reasonConfig[reason].label} — Qty ${quantity} — Stock: ${stockOutcome} — Order → ${newOrderStatus}`,
@@ -313,7 +313,7 @@ export default function ReturnsPage() {
       // 5. Auto-create exception for on_hold returns
       if (newOrderStatus === 'on-hold') {
         const exceptionReason = reasonToExceptionReason[reason] || 'Returned Item';
-        await (supabase as any).from('exceptions').insert({
+        await supabase.from('exceptions').insert({
           company_id: currentCompany.id,
           title: `Return: ${reasonConfig[reason].label} — ${matchedOrder.order_number}`,
           exception_type: 'returned_item',
@@ -337,7 +337,6 @@ export default function ReturnsPage() {
       setStep('done');
       toast.success('Return processed successfully');
     } catch (err) {
-      console.error('Failed to process return:', err);
       toast.error('Failed to process return');
     }
   };

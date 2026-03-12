@@ -22,8 +22,6 @@ import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { toast } from "@/hooks/use-toast";
 
-const db = supabase as any;
-
 const sources = ['WooCommerce', 'Pirate Ship', 'ShipStation', 'Master XLSX', 'Inventory / Stock', 'Manufacturer Inbound'];
 
 interface UploadProgress {
@@ -125,7 +123,6 @@ export default function UploadsPage() {
         }
       }
     } catch (err: any) {
-      console.error("File processing error:", err);
       setUploading({ fileName: file.name, status: "error", total: 0, processed: 0, errors: 0, message: err.message });
       toast({ title: "Parse failed", description: err.message, variant: "destructive" });
       setTimeout(() => setUploading(null), 4000);
@@ -153,7 +150,7 @@ export default function UploadsPage() {
         result = await importMasterRows(data as ParsedMasterRow[], currentCompany.id, user.id, onProgress);
       }
 
-      await db.from("data_intake_logs").insert({
+      await supabase.from("data_intake_logs").insert({
         company_id: currentCompany.id, file_name: fileName,
         file_type: fileName.endsWith(".csv") ? "csv" : "xlsx",
         source_type: sourceKey, status: result.errors > 0 ? "completed_with_errors" : "completed",
@@ -181,11 +178,10 @@ export default function UploadsPage() {
         description: `${result.processed} of ${preview.totalRows} rows imported to ${destInfo}${result.errors > 0 ? ` (${result.errors} errors)` : ""}.`,
       });
     } catch (err: any) {
-      console.error("Import error:", err);
       setUploading(prev => prev ? { ...prev, status: "error", message: err.message } : null);
       toast({ title: "Import failed", description: err.message, variant: "destructive" });
 
-      await db.from("data_intake_logs").insert({
+      await supabase.from("data_intake_logs").insert({
         company_id: currentCompany.id, file_name: fileName,
         file_type: fileName.endsWith(".csv") ? "csv" : "xlsx",
         source_type: sourceKey, status: "failed", total_rows: 0,
