@@ -249,7 +249,7 @@ export function useImportSkuFramework() {
       if (parsed.length === 0) throw new Error("No products found in the spreadsheet.");
 
       // Get existing SKUs
-      const { data: existing, error: pErr } = await db
+      const { data: existing, error: pErr } = await supabase
         .from('products').select('sku, id').eq('company_id', companyId);
       if (pErr) throw pErr;
       const existingMap = new Map((existing || []).map((p) => [p.sku, p.id]));
