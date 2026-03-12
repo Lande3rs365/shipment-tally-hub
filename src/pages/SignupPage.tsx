@@ -30,7 +30,8 @@ export default function SignupPage() {
     });
     setLoading(false);
     if (error) {
-      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      console.error("[signup]", error);
+      toast({ title: "Signup failed", description: "Something went wrong. Please try again.", variant: "destructive" });
     } else {
       navigate("/onboarding", { replace: true });
     }
