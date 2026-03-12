@@ -158,9 +158,10 @@ export default function OnboardingPage() {
       setStep(TOTAL_STEPS); // done state
       setTimeout(() => navigate("/", { replace: true }), 1500);
     } catch (err: any) {
+      console.error("[onboarding:finish]", err);
       const message = err?.code === "23505"
         ? "That company code is already taken. Please choose a different one."
-        : err?.message || "Something went wrong. Please try again.";
+        : "Something went wrong. Please try again.";
       toast({ title: "Setup failed", description: message, variant: "destructive" });
       setLoading(false);
     }
