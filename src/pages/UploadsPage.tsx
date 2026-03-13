@@ -25,7 +25,15 @@ import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { toast } from "@/hooks/use-toast";
 
-const sources = ['WooCommerce', 'Pirate Ship', 'ShipStation', 'Master XLSX', 'Inventory / Stock', 'Manufacturer Inbound'];
+const SOURCES = [
+  { key: 'WooCommerce', icon: ShoppingCart, description: 'Import customer orders from WooCommerce CSV exports', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+  { key: 'Pirate Ship', icon: Ship, description: 'Import shipment tracking from Pirate Ship CSV exports', color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-100 dark:bg-sky-900/30' },
+  { key: 'ShipStation', icon: Anchor, description: 'Import shipment tracking from ShipStation CSV exports', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
+  { key: 'Master XLSX', icon: FileSpreadsheet, description: 'Combined orders + shipments from a single Excel file', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
+  { key: 'Inventory / Stock', icon: Package, description: 'Import stock levels and inventory adjustments', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30' },
+  { key: 'Manufacturer Inbound', icon: Truck, description: 'Import inbound supplier/manufacturer manifests', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/30' },
+];
+const sources = SOURCES.map(s => s.key);
 
 interface UploadProgress {
   fileName: string;
