@@ -537,7 +537,7 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-bold text-foreground">Settings</h1>
 
       <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="mb-6 flex-wrap h-auto gap-1 p-1">
+        <TabsList className="mb-6 h-auto p-1 flex flex-nowrap overflow-x-auto scrollbar-hide gap-1 justify-start w-full">
           <TabsTrigger value="company" className="gap-1.5">
             <Building2 className="w-3.5 h-3.5" /> Company
           </TabsTrigger>
