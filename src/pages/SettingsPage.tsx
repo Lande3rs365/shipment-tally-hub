@@ -270,6 +270,7 @@ function TeamTab() {
   const [role, setRole] = useState("member");
   const [sending, setSending] = useState(false);
   const [changingRole, setChangingRole] = useState<string | null>(null);
+  const [pendingRoles, setPendingRoles] = useState<Record<string, string>>({});
 
   // Fetch members
   const { data: members = [] } = useQuery<TeamMember[]>({
@@ -445,26 +446,42 @@ function TeamTab() {
                     </p>
                   </div>
                   {isOwner && !isCurrentUser ? (
-                    <Select
-                      value={m.role}
-                      onValueChange={(val) => handleRoleChange(m.id, m.user_id, val)}
-                      disabled={changingRole === m.id}
-                    >
-                      <SelectTrigger className="w-28 h-8 text-[11px]">
-                        {changingRole === m.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <SelectValue />
-                        )}
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ROLES.map((r) => (
-                          <SelectItem key={r.value} value={r.value} className="text-xs">
-                            {r.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Select
+                        value={pendingRoles[m.id] ?? m.role}
+                        onValueChange={(val) => setPendingRoles((prev) => ({ ...prev, [m.id]: val }))}
+                        disabled={changingRole === m.id}
+                      >
+                        <SelectTrigger className="w-28 h-8 text-[11px]">
+                          {changingRole === m.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <SelectValue />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map((r) => (
+                            <SelectItem key={r.value} value={r.value} className="text-xs">
+                              {r.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {pendingRoles[m.id] && pendingRoles[m.id] !== m.role && (
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs gap-1"
+                          disabled={changingRole === m.id}
+                          onClick={() => {
+                            handleRoleChange(m.id, m.user_id, pendingRoles[m.id]);
+                            setPendingRoles((prev) => { const n = { ...prev }; delete n[m.id]; return n; });
+                          }}
+                        >
+                          {changingRole === m.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                          Update
+                        </Button>
+                      )}
+                    </div>
                   ) : (
                     <Badge
                       variant={m.role === "owner" ? "default" : "secondary"}
