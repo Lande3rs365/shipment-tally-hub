@@ -40,7 +40,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
                 <Package className="w-3.5 h-3.5 text-primary-foreground" />
               </div>
-              <span className="text-sm font-bold text-sidebar-accent-foreground">DistroHub</span>
+              <span className="text-sm font-bold text-sidebar-accent-foreground">FulfillMate</span>
             </div>
           </header>
         )}

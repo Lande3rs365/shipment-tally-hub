@@ -200,7 +200,7 @@ export default function OnboardingPage() {
           stepIndex={0}
           totalSteps={TOTAL_STEPS}
           title="Welcome! Tell us about yourself"
-          description="This helps us tailor DistroHub to your needs."
+          description="This helps us tailor FulfillMate to your needs."
           icon={<Package className="w-6 h-6 text-primary-foreground" />}
           onNext={() => setStep(1)}
           nextDisabled={!businessType}

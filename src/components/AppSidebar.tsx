@@ -66,7 +66,7 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-sm font-bold text-sidebar-accent-foreground truncate">DistroHub</h1>
+            <h1 className="text-sm font-bold text-sidebar-accent-foreground truncate">FulfillMate</h1>
             <p className="text-[10px] text-sidebar-foreground">Operations Control</p>
           </div>
         )}

@@ -56,7 +56,7 @@ export default function SignupPage() {
           </div>
           <CardTitle className="text-2xl text-foreground">Create your account</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Get started with DistroHub
+            Get started with FulfillMate
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -53,7 +53,7 @@ export default function LoginPage() {
           <div className="mx-auto w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
             <Package className="w-6 h-6 text-primary-foreground" />
           </div>
-          <CardTitle className="text-2xl text-foreground">Sign in to DistroHub</CardTitle>
+          <CardTitle className="text-2xl text-foreground">Sign in to FulfillMate</CardTitle>
           <CardDescription className="text-muted-foreground">
             Operations Control Center
           </CardDescription>

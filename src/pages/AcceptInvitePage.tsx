@@ -117,7 +117,7 @@ export default function AcceptInvitePage() {
             <TicketCheck className="w-6 h-6 text-primary" />
           </div>
           <CardTitle>Accept Invitation</CardTitle>
-          <CardDescription>Join a company on DistroHub</CardDescription>
+          <CardDescription>Join a company on FulfillMate</CardDescription>
         </CardHeader>
         <CardContent>
           {loading && (
