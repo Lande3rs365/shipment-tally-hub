@@ -475,8 +475,13 @@ function TeamTab() {
                           className="h-8 text-xs gap-1"
                           disabled={changingRole === m.id}
                           onClick={() => {
-                            handleRoleChange(m.id, m.user_id, pendingRoles[m.id]);
-                            setPendingRoles((prev) => { const n = { ...prev }; delete n[m.id]; return n; });
+                            const newRole = pendingRoles[m.id];
+                            if (newRole === "owner") {
+                              setOwnerConfirm({ membershipId: m.id, userId: m.user_id, name: name as string });
+                            } else {
+                              handleRoleChange(m.id, m.user_id, newRole);
+                              setPendingRoles((prev) => { const n = { ...prev }; delete n[m.id]; return n; });
+                            }
                           }}
                         >
                           {changingRole === m.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
