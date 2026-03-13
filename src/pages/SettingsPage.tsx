@@ -393,8 +393,17 @@ function TeamTab() {
               return (
                 <div
                   key={m.id}
-                  className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-muted/30"
+                  className="flex items-center gap-4 p-4 rounded-lg border border-border bg-muted/30"
                 >
+                  <div className={cn(
+                    "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                    m.role === "owner" ? "bg-primary/15" : "bg-accent"
+                  )}>
+                    {m.role === "owner"
+                      ? <Shield className="w-5 h-5 text-primary" />
+                      : <User className="w-5 h-5 text-muted-foreground" />
+                    }
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">
                       {name} {isCurrentUser && <span className="text-muted-foreground">(you)</span>}
