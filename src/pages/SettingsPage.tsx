@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Building2, MapPin, Users, Save, Loader2, Plus, Trash2, Copy,
-  Mail, UserPlus, X, Crown, Lock, Upload, FileText, Plug,
+  Mail, UserPlus, X, Crown, Lock, Upload, FileText, Plug, Shield, User,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
@@ -393,8 +394,17 @@ function TeamTab() {
               return (
                 <div
                   key={m.id}
-                  className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-muted/30"
+                  className="flex items-center gap-4 p-4 rounded-lg border border-border bg-muted/30"
                 >
+                  <div className={cn(
+                    "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                    m.role === "owner" ? "bg-primary/15" : "bg-accent"
+                  )}>
+                    {m.role === "owner"
+                      ? <Shield className="w-5 h-5 text-primary" />
+                      : <User className="w-5 h-5 text-muted-foreground" />
+                    }
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">
                       {name} {isCurrentUser && <span className="text-muted-foreground">(you)</span>}
