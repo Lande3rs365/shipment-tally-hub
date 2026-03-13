@@ -521,7 +521,11 @@ export default function IntegrationsPage() {
               <Button onClick={() => saveSSCredentials(false)} disabled={ssSaving || ssSyncing} size="sm">
                 {ssSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Save Credentials
               </Button>
+              <Button onClick={handleSSSync} disabled={!hasSS || ssSyncing || ssTesting} variant="outline" size="sm">
+                {ssSyncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Now
+              </Button>
             </div>
+            {ssProgress && <p className="text-sm text-muted-foreground animate-pulse">{ssProgress}</p>}
           </div>
 
           {hasSS && (
