@@ -885,7 +885,7 @@ function AIAgentComingSoon() {
       phase: "Phase 1",
       label: "Zero Manual Order Chasing",
       hook: "I need this today",
-      status: "Building Now",
+      status: "In Development",
       items: [
         { name: "Shopify + WooCommerce Sync", desc: "All your sales channels feeding orders into one place — no more copy-pasting between platforms" },
         { name: "EasyPost Unified Tracking", desc: "Live tracking webhooks for 100+ carriers — you'll never manually chase a tracking number again" },
