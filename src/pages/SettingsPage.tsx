@@ -568,13 +568,13 @@ export default function SettingsPage() {
           <TeamTab />
         </TabsContent>
         <TabsContent value="integrations">
-          <IntegrationsContent />
+          <IntegrationsContent embedded />
         </TabsContent>
         <TabsContent value="data-intake">
-          <DataIntakeContent />
+          <DataIntakeContent embedded />
         </TabsContent>
         <TabsContent value="exports">
-          <ExportsContent />
+          <ExportsContent embedded />
         </TabsContent>
       </Tabs>
     </div>
