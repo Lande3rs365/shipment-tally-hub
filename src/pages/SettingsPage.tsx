@@ -610,6 +610,32 @@ function TeamTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* Owner promotion confirmation */}
+      <AlertDialog open={!!ownerConfirm} onOpenChange={(open) => !open && setOwnerConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Promote to Owner?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to grant <strong>{ownerConfirm?.name}</strong> full Owner access. Owners have unrestricted administrative control including the ability to manage all team members, settings, and integrations. This action can only be reversed by another owner.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (ownerConfirm) {
+                  handleRoleChange(ownerConfirm.membershipId, ownerConfirm.userId, "owner");
+                  setPendingRoles((prev) => { const n = { ...prev }; delete n[ownerConfirm.membershipId]; return n; });
+                }
+                setOwnerConfirm(null);
+              }}
+            >
+              Confirm Promotion
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
