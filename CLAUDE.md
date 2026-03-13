@@ -1,4 +1,4 @@
-# CLAUDE.md — Shipment Tally Hub
+# CLAUDE.md — FulfillMate Distribution Hub
 
 AI assistant guide for understanding and working in this codebase.
 
@@ -6,7 +6,7 @@ AI assistant guide for understanding and working in this codebase.
 
 ## Project Overview
 
-**Shipment Tally Hub** is a multi-tenant inventory and shipment management web application. It enables businesses to:
+**FulfillMate Distribution Hub** is a multi-tenant inventory and shipment management web application. It enables businesses to:
 
 - Manage customer orders (WooCommerce integration)
 - Track outbound shipments (Pirate Ship / ShipStation)
@@ -197,7 +197,7 @@ const { data } = useQuery({
 1. `AuthContext` wraps the app and listens to `supabase.auth.onAuthStateChange`
 2. `ProtectedRoute` redirects to `/login` if no session
 3. `CompanyGate` redirects to `/onboarding` if user has no companies
-4. After onboarding, `CompanyContext` persists selected company to `localStorage` (`distrohub_company_id`)
+4. After onboarding, `CompanyContext` persists selected company to `localStorage` (`fulfillmate_company_id`)
 
 ### Provider Hierarchy (App.tsx)
 

@@ -68,7 +68,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       const list = (companyData || []) as Company[];
       setCompanies(list);
 
-      const savedId = localStorage.getItem("distrohub_company_id");
+      const savedId = localStorage.getItem("fulfillmate_company_id")
+        ?? localStorage.getItem("distrohub_company_id"); // migrate old key
       const saved = list.find(c => c.id === savedId);
       setCurrentCompany(saved || list[0] || null);
       setLoading(false);
@@ -84,7 +85,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const handleSetCompany = (company: Company) => {
     setCompanies(prev => (prev.some(c => c.id === company.id) ? prev : [...prev, company]));
     setCurrentCompany(company);
-    localStorage.setItem("distrohub_company_id", company.id);
+    localStorage.setItem("fulfillmate_company_id", company.id);
+    localStorage.removeItem("distrohub_company_id"); // clean up old key
   };
 
   return (

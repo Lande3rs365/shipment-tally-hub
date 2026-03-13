@@ -86,6 +86,6 @@ describe("CompanyContext", () => {
     });
 
     await waitFor(() => expect(result.current.currentCompany?.id).toBe("co-2"));
-    expect(localStorage.getItem("distrohub_company_id")).toBe("co-2");
+    expect(localStorage.getItem("fulfillmate_company_id")).toBe("co-2");
   });
 });

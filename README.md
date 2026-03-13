@@ -1,4 +1,4 @@
-# Shipment Tally Hub
+# FulfillMate Distribution Hub
 
 Multi-tenant inventory and shipment management web app for operations teams. Manage customer orders, track outbound shipments, monitor inventory, process returns, and handle supplier manifests — all in one place.
 
@@ -17,7 +17,7 @@ Multi-tenant inventory and shipment management web app for operations teams. Man
 
 ```bash
 git clone <repo-url>
-cd shipment-tally-hub
+cd FulfillMate-Distribution-Hub
 npm install
 ```
 

@@ -96,7 +96,7 @@ export default function BillingPage() {
                   Current Plan
                 </Button>
               ) : plan.name === "Enterprise" ? (
-                <Button variant="outline" className="w-full" onClick={() => window.open("mailto:support@distrohub.app", "_blank")}>
+                <Button variant="outline" className="w-full" onClick={() => window.open("mailto:support@fulfillmate.app", "_blank")}>
                   <Headphones className="w-4 h-4 mr-1" /> Contact Sales
                 </Button>
               ) : (
