@@ -533,11 +533,11 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 sm:p-6 space-y-6 max-w-5xl">
       <h1 className="text-2xl font-bold text-foreground">Settings</h1>
 
       <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
-        <TabsList className="mb-4 flex-wrap h-auto gap-1">
+        <TabsList className="mb-6 flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="company" className="gap-1.5">
             <Building2 className="w-3.5 h-3.5" /> Company
           </TabsTrigger>
