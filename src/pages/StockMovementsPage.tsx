@@ -97,10 +97,10 @@ export default function StockMovementsPage() {
   if (!currentCompany) return <EmptyState icon={ArrowRightLeft} title="No company selected" />;
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold">Stock Ledger</h1>
+          <h1 className="text-xl md:text-2xl font-bold">Stock Ledger</h1>
           <p className="text-sm text-muted-foreground">{movements.length} movements recorded · Auditable stock history</p>
         </div>
         <Button onClick={() => setShowAdjForm(!showAdjForm)} size="sm">
