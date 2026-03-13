@@ -354,6 +354,7 @@ export default function ExceptionsPage() {
                 Resolved ({resolved.length})
               </h3>
               <div className="rounded-lg border border-border overflow-hidden">
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>{renderSortableHeader(false, [])}</TableHeader>
                   <TableBody>
