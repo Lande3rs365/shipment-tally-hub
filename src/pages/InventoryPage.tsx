@@ -35,10 +35,9 @@ export default function InventoryPage() {
   if (!currentCompany) return <EmptyState icon={Warehouse} title="No company selected" />;
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Inventory Control</h1>
+    <div className="p-4 md:p-6 space-y-4">
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold">Inventory Control</h1>
           <p className="text-sm text-muted-foreground">{inventory.length} records · Movement-based stock ledger</p>
         </div>
       </div>
