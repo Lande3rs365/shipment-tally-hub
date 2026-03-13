@@ -401,6 +401,7 @@ export default function ExceptionsPage() {
                 </Table>
                 </div>
               </div>
+            </div>
           )}
         </div>
       )}
