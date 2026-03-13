@@ -3,39 +3,28 @@ import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useInventory, useStockMovements } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
-import { Warehouse, Search, AlertTriangle, TrendingDown, ShieldAlert, RotateCcw } from "lucide-react";
+import { Warehouse, Search, AlertTriangle, TrendingDown, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 
 export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>('all');
   const { currentCompany } = useCompany();
   const { data: inventory = [], isLoading } = useInventory();
   const { data: movements = [] } = useStockMovements();
 
-  const filtered = inventory.filter(i =>
-    (i.products?.sku || '').toLowerCase().includes(search.toLowerCase()) ||
-    (i.products?.name || '').toLowerCase().includes(search.toLowerCase())
-  );
-
   const totalOnHand = inventory.reduce((s, i) => s + i.on_hand, 0);
   const totalReserved = inventory.reduce((s, i) => s + i.reserved, 0);
   const totalDamaged = inventory.reduce((s, i) => s + i.damaged, 0);
-
   const lowCount = inventory.filter(i => {
     const threshold = i.products?.reorder_point || 0;
     return i.on_hand > 0 && i.on_hand <= threshold;
   }).length;
-
   const outCount = inventory.filter(i => i.on_hand === 0).length;
 
   const getItemMovements = (productId: string) =>
     movements.filter(m => m.product_id === productId).slice(0, 10);
-
-  if (!currentCompany) return <EmptyState icon={Warehouse} title="No company selected" />;
-
-  const stockFilter = useState<string>('all');
-  const [filter, setFilter] = stockFilter;
 
   const filteredByTab = inventory.filter(i => {
     if (filter === 'all') return true;
@@ -49,20 +38,6 @@ export default function InventoryPage() {
     (i.products?.sku || '').toLowerCase().includes(search.toLowerCase()) ||
     (i.products?.name || '').toLowerCase().includes(search.toLowerCase())
   );
-
-  const totalOnHand = inventory.reduce((s, i) => s + i.on_hand, 0);
-  const totalReserved = inventory.reduce((s, i) => s + i.reserved, 0);
-  const totalDamaged = inventory.reduce((s, i) => s + i.damaged, 0);
-
-  const lowCount = inventory.filter(i => {
-    const threshold = i.products?.reorder_point || 0;
-    return i.on_hand > 0 && i.on_hand <= threshold;
-  }).length;
-
-  const outCount = inventory.filter(i => i.on_hand === 0).length;
-
-  const getItemMovements = (productId: string) =>
-    movements.filter(m => m.product_id === productId).slice(0, 10);
 
   if (!currentCompany) return <EmptyState icon={Warehouse} title="No company selected" />;
 
