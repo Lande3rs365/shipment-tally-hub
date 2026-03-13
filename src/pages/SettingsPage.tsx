@@ -32,14 +32,42 @@ function CompanyDetailsTab() {
   const { currentCompany, setCurrentCompany } = useCompany();
   const [name, setName] = useState(currentCompany?.name || "");
   const [code, setCode] = useState(currentCompany?.code || "");
+  const [companyEmail, setCompanyEmail] = useState("");
+  const [companyPhone, setCompanyPhone] = useState("");
+  const [companyAddress, setCompanyAddress] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Fetch extra fields on mount
+  useState(() => {
+    if (!currentCompany || loaded) return;
+    supabase
+      .from("companies")
+      .select("email, phone, address")
+      .eq("id", currentCompany.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setCompanyEmail(data.email || "");
+          setCompanyPhone(data.phone || "");
+          setCompanyAddress(data.address || "");
+        }
+        setLoaded(true);
+      });
+  });
 
   const handleSave = async () => {
     if (!currentCompany) return;
     setSaving(true);
     const { error } = await supabase
       .from("companies")
-      .update({ name: name.trim(), code: code.trim().toUpperCase() })
+      .update({
+        name: name.trim(),
+        code: code.trim().toUpperCase(),
+        email: companyEmail.trim() || null,
+        phone: companyPhone.trim() || null,
+        address: companyAddress.trim() || null,
+      })
       .eq("id", currentCompany.id);
     setSaving(false);
     if (error) {
@@ -64,7 +92,7 @@ function CompanyDetailsTab() {
         <CardTitle className="text-lg flex items-center gap-2">
           <Building2 className="w-5 h-5 text-primary" /> Company Details
         </CardTitle>
-        <CardDescription>Update your company name and short code.</CardDescription>
+        <CardDescription>Update your company information.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 max-w-md">
         <div className="space-y-2">
@@ -83,6 +111,36 @@ function CompanyDetailsTab() {
             onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
             maxLength={20}
             className="font-mono"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="companyEmail">Email</Label>
+          <Input
+            id="companyEmail"
+            type="email"
+            value={companyEmail}
+            onChange={(e) => setCompanyEmail(e.target.value)}
+            placeholder="info@company.com"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="companyPhone">Phone number</Label>
+          <Input
+            id="companyPhone"
+            type="tel"
+            value={companyPhone}
+            onChange={(e) => setCompanyPhone(e.target.value)}
+            placeholder="e.g. +61 2 1234 5678"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="companyAddress">Address</Label>
+          <Textarea
+            id="companyAddress"
+            value={companyAddress}
+            onChange={(e) => setCompanyAddress(e.target.value)}
+            placeholder="Street address, city, state, postcode"
+            rows={3}
           />
         </div>
         <Button onClick={handleSave} disabled={saving || !name.trim() || !code.trim()}>
