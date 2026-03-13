@@ -399,8 +399,8 @@ export default function ExceptionsPage() {
                     })}
                   </TableBody>
                 </Table>
+                </div>
               </div>
-            </div>
           )}
         </div>
       )}
