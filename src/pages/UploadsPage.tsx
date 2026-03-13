@@ -55,6 +55,10 @@ interface ImportSummary {
 }
 
 export default function UploadsPage() {
+  return <DataIntakeContent />;
+}
+
+export function DataIntakeContent() {
   const [selectedSource, setSelectedSource] = useState(sources[0]);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState<UploadProgress | null>(null);

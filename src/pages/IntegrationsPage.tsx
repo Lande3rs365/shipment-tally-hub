@@ -33,6 +33,10 @@ function SyncStatusBadge({ status }: { status: string | null }) {
 }
 
 export default function IntegrationsPage() {
+  return <IntegrationsContent />;
+}
+
+export function IntegrationsContent() {
   const { currentCompany } = useCompany();
   const { user } = useAuth();
   const queryClient = useQueryClient();

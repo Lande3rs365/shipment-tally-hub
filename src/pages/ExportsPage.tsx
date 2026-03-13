@@ -178,6 +178,10 @@ const COMING_SOON = [
 ];
 
 export default function ExportsPage() {
+  return <ExportsContent />;
+}
+
+export function ExportsContent() {
   const { currentCompany } = useCompany();
   const [loading, setLoading] = useState<ExportKey | null>(null);
 
