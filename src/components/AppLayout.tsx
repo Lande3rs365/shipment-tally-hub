@@ -13,6 +13,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { data: tawkSettings } = useTawkSettings();
   const isMobile = useIsMobile();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.refetchQueries({ type: "active" });
+  }, [queryClient]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -51,9 +56,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </SheetContent>
         </Sheet>
 
-        <main className="flex-1 overflow-auto">
+        <PullToRefresh onRefresh={handleRefresh}>
           {children}
-        </main>
+        </PullToRefresh>
       </div>
 
       {tawkSettings?.is_enabled && tawkSettings?.property_id && (
