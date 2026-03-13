@@ -75,7 +75,7 @@ export default function Dashboard() {
     pageSetter(1);
   };
 
-  if (companyLoading || isLoading) return <div className="p-6"><LoadingSpinner message="Loading dashboard..." /></div>;
+  if (companyLoading || isLoading) return <div className="p-4 md:p-6"><LoadingSpinner message="Loading dashboard..." /></div>;
 
   if (!currentCompany) {
     return (
