@@ -1,6 +1,6 @@
 import {
   Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Eye, AlertTriangle, Info,
-  ShoppingCart, Ship, Anchor, FileDown, Package, Truck, Clock,
+  FileDown, Package, Truck, Clock,
 } from "lucide-react";
 import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
@@ -24,14 +24,17 @@ import {
 import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { toast } from "@/hooks/use-toast";
+import wooLogo from "@/assets/logo-woocommerce.svg";
+import shipstationLogo from "@/assets/logo-shipstation.png";
+import pirateshipLogo from "@/assets/logo-pirateship.png";
 
 const SOURCES = [
-  { key: 'WooCommerce', icon: ShoppingCart, description: 'Import customer orders from WooCommerce CSV exports', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' },
-  { key: 'Pirate Ship', icon: Ship, description: 'Import shipment tracking from Pirate Ship CSV exports', color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-100 dark:bg-sky-900/30' },
-  { key: 'ShipStation', icon: Anchor, description: 'Import shipment tracking from ShipStation CSV exports', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
-  { key: 'Master XLSX', icon: FileSpreadsheet, description: 'Combined orders + shipments from a single Excel file', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
-  { key: 'Inventory / Stock', icon: Package, description: 'Import stock levels and inventory adjustments', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30' },
-  { key: 'Manufacturer Inbound', icon: Truck, description: 'Import inbound supplier/manufacturer manifests', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/30' },
+  { key: 'WooCommerce', logo: wooLogo, icon: null as any, description: 'Import customer orders from WooCommerce CSV exports', color: '', bg: '' },
+  { key: 'Pirate Ship', logo: pirateshipLogo, icon: null as any, description: 'Import shipment tracking from Pirate Ship CSV exports', color: '', bg: '' },
+  { key: 'ShipStation', logo: shipstationLogo, icon: null as any, description: 'Import shipment tracking from ShipStation CSV exports', color: '', bg: '' },
+  { key: 'Master XLSX', logo: null as string | null, icon: FileSpreadsheet, description: 'Combined orders + shipments from a single Excel file', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
+  { key: 'Inventory / Stock', logo: null as string | null, icon: Package, description: 'Import stock levels and inventory adjustments', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-900/30' },
+  { key: 'Manufacturer Inbound', logo: null as string | null, icon: Truck, description: 'Import inbound supplier/manufacturer manifests', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-900/30' },
 ];
 const sources = SOURCES.map(s => s.key);
 
@@ -224,7 +227,6 @@ export function DataIntakeContent({ embedded = false }: { embedded?: boolean }) 
 
   if (!currentCompany) return <EmptyState icon={Upload} title="No company selected" />;
 
-  const sourceInfo = SOURCE_INFO[selectedSource];
 
   return (
     <div className={cn(embedded ? "space-y-6" : "p-6 space-y-6")}>
@@ -237,7 +239,7 @@ export function DataIntakeContent({ embedded = false }: { embedded?: boolean }) 
 
       {/* Source cards — Exports-style rows */}
       <div className="grid gap-3">
-        {SOURCES.map(({ key, icon: Icon, description, color, bg }) => {
+        {SOURCES.map(({ key, logo, icon: Icon, description, color, bg }) => {
           const isSelected = selectedSource === key;
           const isUnavailable = key === 'Inventory / Stock' || key === 'Manufacturer Inbound';
           return (
@@ -254,9 +256,13 @@ export function DataIntakeContent({ embedded = false }: { embedded?: boolean }) 
                 uploading && !isUnavailable && "opacity-50 cursor-not-allowed"
               )}
             >
-              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", bg)}>
-                <Icon className={cn("w-5 h-5", color)} />
-              </div>
+              {logo ? (
+                <img src={logo} alt={key} className="w-10 h-10 rounded-lg object-contain shrink-0" />
+              ) : (
+                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center shrink-0", bg)}>
+                  {Icon && <Icon className={cn("w-5 h-5", color)} />}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-foreground">{key}</p>
                 <p className="text-sm text-muted-foreground">{description}</p>
@@ -276,16 +282,6 @@ export function DataIntakeContent({ embedded = false }: { embedded?: boolean }) 
           );
         })}
       </div>
-
-      {/* Destination info note */}
-      {sourceInfo && (
-        <div className="flex items-start gap-2 p-3 rounded-md bg-muted/30 border border-border/50 text-xs text-muted-foreground">
-          <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-          <span>
-            <strong className="text-foreground">{sourceInfo.label}</strong> files write to the <strong className="text-foreground font-mono">{sourceInfo.destinationTable}</strong> table and appear on the <strong className="text-foreground">{sourceInfo.destinationPage}</strong> page.
-          </span>
-        </div>
-      )}
 
       {/* Source mismatch warning */}
       {pending?.mismatch && !pending.overridden && (
@@ -385,10 +381,20 @@ export function DataIntakeContent({ embedded = false }: { embedded?: boolean }) 
               </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {pending.preview.updatedOrders > 0 && "Updated orders will have their data replaced with the new file. "}
-            {pending.preview.onHoldOrders > 0 && "On-hold orders will be added to the exception queue for follow-up."}
-          </p>
+          {(pending.preview.updatedOrders > 0 || pending.preview.updatedShipments > 0) && (
+            <div className="flex items-start gap-2 p-3 rounded-md bg-warning/10 border border-warning/30 text-sm">
+              <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+              <span className="text-foreground">
+                <strong>{(pending.preview.updatedOrders || 0) + (pending.preview.updatedShipments || 0)} duplicate records</strong> found.
+                These will be <strong>replaced with the latest data</strong> from this file.
+              </span>
+            </div>
+          )}
+          {pending.preview.onHoldOrders > 0 && (
+            <p className="text-xs text-muted-foreground">
+              On-hold orders will be added to the exception queue for follow-up.
+            </p>
+          )}
           <div className="flex gap-2">
             <button onClick={confirmImport} className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors">
               Confirm Import ({pending.preview.totalRows} rows → {pending.type === "shipment" ? "shipments" : pending.type === "master" ? "orders + shipments" : "orders"})
@@ -522,7 +528,7 @@ export function DataIntakeContent({ embedded = false }: { embedded?: boolean }) 
           <p className="text-xs text-muted-foreground">No uploads yet.</p>
         ) : (
           <div className="space-y-2">
-            {logs.map(u => (
+            {logs.slice(0, 5).map(u => (
               <div key={u.id} className="flex items-center justify-between p-3 rounded-md bg-muted/30 border border-border/50">
                 <div className="flex items-center gap-3">
                   <FileSpreadsheet className="w-4 h-4 text-success" />
