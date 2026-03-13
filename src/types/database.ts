@@ -279,7 +279,7 @@ export type CommsDirection = 'inbound' | 'outbound';
 export type CommsSenderType = 'customer' | 'carrier' | 'supplier' | 'agent_ai' | 'team' | 'system';
 export type IncomingWebhookSource =
   | 'shipping_email' | 'tawk' | 'zendesk' | 'carrier'
-  | 'easypost' | 'shopify' | 'amazon' | 'etsy'
+  | 'easypost' | 'shopify' | 'amazon' | 'etsy' | 'ebay' | 'tiktok_shop'
   | 'paypal' | 'stripe' | 'afterpay' | 'klarna'
   | 'klaviyo' | 'mailchimp' | 'xero' | 'google_drive'
   | 'other';
@@ -386,7 +386,7 @@ export interface AgentActionWithRelations extends AgentAction {
 
 export type IntegrationType =
   | 'easypost' | 'shippo' | 'australia_post'
-  | 'shopify' | 'amazon' | 'etsy' | 'woocommerce'
+  | 'shopify' | 'amazon' | 'etsy' | 'woocommerce' | 'ebay' | 'tiktok_shop'
   | 'xero' | 'quickbooks' | 'myob'
   | 'paypal' | 'stripe' | 'afterpay' | 'klarna' | 'square'
   | 'klaviyo' | 'mailchimp'
@@ -394,7 +394,7 @@ export type IntegrationType =
   | 'slack' | 'trello' | 'telegram' | 'google_drive'
   | 'google_workspace' | 'microsoft_365' | 'sendgrid' | 'postmark';
 
-export type SalesChannelType = 'shopify' | 'amazon' | 'etsy' | 'woocommerce' | 'manual' | 'other';
+export type SalesChannelType = 'shopify' | 'amazon' | 'etsy' | 'woocommerce' | 'ebay' | 'tiktok_shop' | 'manual' | 'other';
 
 export type CarrierTrackingStatus =
   | 'pre_transit' | 'in_transit' | 'out_for_delivery' | 'delivered'
