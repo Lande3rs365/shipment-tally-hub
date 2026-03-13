@@ -269,6 +269,11 @@ function TeamTab() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
   const [sending, setSending] = useState(false);
+  const [changingRole, setChangingRole] = useState<string | null>(null);
+
+  // Determine if current user is owner
+  const currentUserMembership = members.find((m) => m.user_id === user?.id);
+  const isOwner = currentUserMembership?.role === "owner";
 
   // Fetch members
   const { data: members = [] } = useQuery<TeamMember[]>({
