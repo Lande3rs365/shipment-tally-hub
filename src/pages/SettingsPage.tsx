@@ -915,7 +915,7 @@ function AIAgentComingSoon() {
       label: "Marketplace & Payments",
       status: "Planned",
       items: [
-        { name: "Amazon Seller", desc: "Marketplace orders via SP-API with automatic fulfilment sync" },
+        { name: "Amazon / eBay / TikTok Shop", desc: "Marketplace orders from Amazon SP-API, eBay, and TikTok Shop with automatic fulfilment sync" },
         { name: "PayPal / Afterpay", desc: "Payment status reconciliation against orders" },
         { name: "Slack / Telegram / Trello", desc: "Team alerts, exception cards, and channel summaries" },
       ],
