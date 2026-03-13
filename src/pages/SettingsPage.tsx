@@ -878,6 +878,10 @@ function AIAgentComingSoon() {
     { icon: Zap, title: "Order Matching", desc: "Matches incoming responses to the right orders and updates records instantly — zero manual work" },
     { icon: Clock, title: "EOD Team Briefings", desc: "End-of-day summaries straight to WhatsApp — orders shipped, exceptions raised, stock alerts" },
     { icon: CheckCircle2, title: "Full Audit Trail", desc: "Every action logged, every message traceable — complete operational visibility" },
+    { icon: MessageSquare, title: "Multi-Channel Sync", desc: "Orders from every platform in one view — no more tab-switching or copy-pasting between spreadsheets" },
+    { icon: Shield, title: "Auto Exception Flagging", desc: "Detects anomalies like missing items, address issues, and weight mismatches — raises exceptions automatically" },
+    { icon: MapPin, title: "Instant Order Routing", desc: "New orders automatically matched to the right warehouse or location for fastest fulfilment" },
+    { icon: Bot, title: "Smart Stock Alerts", desc: "Warns you before you run out — not after orders start failing. Tracks trends and predicts shortages" },
   ];
 
   const PHASES = [
