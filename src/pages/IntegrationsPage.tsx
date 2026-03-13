@@ -397,7 +397,11 @@ export default function IntegrationsPage() {
               <Button onClick={() => saveWooCredentials(false)} disabled={wooSaving || wooSyncing} size="sm">
                 {wooSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Save Credentials
               </Button>
+              <Button onClick={handleWooSync} disabled={!hasWoo || wooSyncing || wooTesting} variant="outline" size="sm">
+                {wooSyncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Now
+              </Button>
             </div>
+            {wooProgress && <p className="text-sm text-muted-foreground animate-pulse">{wooProgress}</p>}
           </div>
 
           {hasWoo && (
@@ -423,11 +427,7 @@ export default function IntegrationsPage() {
                       <Input id="sync-after" type="date" className="pl-9 w-48" value={syncAfter} onChange={(e) => setSyncAfter(e.target.value)} />
                     </div>
                   </div>
-                  <Button onClick={handleWooSync} disabled={wooSyncing || wooTesting} size="sm">
-                    {wooSyncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Now
-                  </Button>
                 </div>
-                {wooProgress && <p className="text-sm text-muted-foreground animate-pulse">{wooProgress}</p>}
               </div>
               <Separator />
               <AutoSyncSelect
@@ -517,7 +517,11 @@ export default function IntegrationsPage() {
               <Button onClick={() => saveSSCredentials(false)} disabled={ssSaving || ssSyncing} size="sm">
                 {ssSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Save Credentials
               </Button>
+              <Button onClick={handleSSSync} disabled={!hasSS || ssSyncing || ssTesting} variant="outline" size="sm">
+                {ssSyncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Now
+              </Button>
             </div>
+            {ssProgress && <p className="text-sm text-muted-foreground animate-pulse">{ssProgress}</p>}
           </div>
 
           {hasSS && (
