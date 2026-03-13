@@ -427,11 +427,7 @@ export default function IntegrationsPage() {
                       <Input id="sync-after" type="date" className="pl-9 w-48" value={syncAfter} onChange={(e) => setSyncAfter(e.target.value)} />
                     </div>
                   </div>
-                  <Button onClick={handleWooSync} disabled={wooSyncing || wooTesting} size="sm">
-                    {wooSyncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Now
-                  </Button>
                 </div>
-                {wooProgress && <p className="text-sm text-muted-foreground animate-pulse">{wooProgress}</p>}
               </div>
               <Separator />
               <AutoSyncSelect
