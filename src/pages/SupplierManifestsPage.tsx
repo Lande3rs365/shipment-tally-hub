@@ -312,64 +312,36 @@ export default function SupplierManifestsPage() {
         </form>
       )}
 
-      {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="kpi-card before:bg-gradient-to-r before:from-info before:to-transparent">
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-info" />
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Pending</p>
-          </div>
-          <p className="text-xl font-bold font-mono text-foreground">{totalExpected}</p>
+      {/* Filter row: tabs + search on same line */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {statusFilters.map(s => (
+            <button
+              key={s}
+              onClick={() => setFilter(s)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                filter === s
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-card text-muted-foreground border-border hover:bg-muted'
+              }`}
+            >
+              {s === 'all' ? `All (${manifests.length})` : `${s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} (${manifests.filter(m => m.status === s).length})`}
+            </button>
+          ))}
         </div>
-        <div className="kpi-card before:bg-gradient-to-r before:from-success before:to-transparent">
-          <div className="flex items-center gap-1.5">
-            <CheckCircle className="w-3.5 h-3.5 text-success" />
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Received</p>
-          </div>
-          <p className="text-xl font-bold font-mono text-foreground">{totalReceived}</p>
-        </div>
-        <div className="kpi-card before:bg-gradient-to-r before:from-warning before:to-transparent">
-          <div className="flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5 text-warning" />
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Partial</p>
-          </div>
-          <p className="text-xl font-bold font-mono text-foreground">{totalIssues}</p>
-        </div>
-        <div className="kpi-card before:bg-gradient-to-r before:from-primary before:to-transparent">
-          <div className="flex items-center gap-1.5">
-            <Package className="w-3.5 h-3.5 text-primary" />
-            <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Lines</p>
-          </div>
-          <p className="text-xl font-bold font-mono text-foreground">
-            {manifests.reduce((s, m) => s + m.manufacturer_manifest_items.length, 0)}
-          </p>
-        </div>
-      </div>
 
-      {/* Filter chips */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {statusFilters.map(s => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
-              filter === s
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-card text-muted-foreground border-border hover:bg-muted'
-            }`}
-          >
-            {s === 'all' ? 'All' : s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
-          </button>
-        ))}
-      </div>
+        <div className="relative flex-1 min-w-0 sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text" placeholder="Search manifest, manufacturer, tracking, SKU..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text" placeholder="Search manifest, manufacturer, tracking, SKU..."
-          value={search} onChange={e => setSearch(e.target.value)}
-          className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        />
+        <span className="text-xs text-muted-foreground sm:ml-auto whitespace-nowrap">
+          Showing {filtered.length} of {manifests.length}
+        </span>
       </div>
 
       {isLoading ? <LoadingSpinner message="Loading manifests..." /> : filtered.length === 0 ? (

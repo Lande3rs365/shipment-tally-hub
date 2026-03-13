@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useReturns, useOrders, useProducts, useStockLocations } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +16,7 @@ import {
   ArrowLeftRight, ShieldCheck, PackageX, PackageSearch, AlertTriangle, HelpCircle, Plus,
   Truck, Globe,
 } from "lucide-react";
-import { useMemo } from "react";
+
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -154,6 +154,8 @@ export default function ReturnsPage() {
   const [reason, setReason] = useState<ReturnReason | null>(null);
   const [notes, setNotes] = useState('');
   const [duplicateWarning, setDuplicateWarning] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const { currentCompany } = useCompany();
   const { user } = useAuth();
@@ -343,8 +345,6 @@ export default function ReturnsPage() {
     }
   };
 
-  if (!currentCompany) return <EmptyState icon={RotateCcw} title="No company selected" />;
-
   const returnCounts = useMemo(() => ({
     initiated: returns.filter(r => r.status === 'initiated').length,
     received: returns.filter(r => r.status === 'received' || r.status === 'approved').length,
@@ -352,8 +352,35 @@ export default function ReturnsPage() {
     refunded: returns.filter(r => r.stock_outcome === 'refund' || r.resolution === 'refund').length,
   }), [returns]);
 
+  const statusTabs = useMemo(() => [
+    { key: 'all', label: `All (${returns.length})` },
+    { key: 'initiated', label: `Awaiting (${returnCounts.initiated})` },
+    { key: 'in_progress', label: `In Progress (${returnCounts.received})` },
+    { key: 'resolved', label: `Resolved (${returnCounts.resolved})` },
+  ], [returns.length, returnCounts]);
+
+  const filteredReturns = useMemo(() => {
+    let result = returns;
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'initiated') result = result.filter(r => r.status === 'initiated');
+      else if (statusFilter === 'in_progress') result = result.filter(r => r.status === 'received' || r.status === 'approved');
+      else if (statusFilter === 'resolved') result = result.filter(r => r.status === 'resolved');
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(r =>
+        (r.orders?.order_number || '').toLowerCase().includes(q) ||
+        (r.reason || '').toLowerCase().includes(q) ||
+        (r.sku || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [returns, statusFilter, search]);
+
+  if (!currentCompany) return <EmptyState icon={RotateCcw} title="No company selected" />;
+
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h1 className="text-xl md:text-2xl font-bold">Returns</h1>
@@ -372,7 +399,41 @@ export default function ReturnsPage() {
         <KpiCard title="Refunded" value={returnCounts.refunded} icon={RotateCcw} variant="danger" />
       </div>
 
-      <ReturnsTable returns={returns} isLoading={isLoading} />
+      {/* Filter row: tabs + search on same line */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {statusTabs.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setStatusFilter(f.key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                statusFilter === f.key
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-card text-muted-foreground border-border hover:bg-muted'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative flex-1 min-w-0 sm:max-w-xs">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search order, customer, reason, SKU..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+
+        <span className="text-xs text-muted-foreground sm:ml-auto whitespace-nowrap">
+          Showing {filteredReturns.length} of {returns.length}
+        </span>
+      </div>
+
+      <ReturnsTable returns={filteredReturns} isLoading={isLoading} />
 
       <Dialog open={showNewReturn} onOpenChange={setShowNewReturn}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">

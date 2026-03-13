@@ -3,36 +3,50 @@ import EmptyState from "@/components/EmptyState";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useInventory, useStockMovements } from "@/hooks/useSupabaseData";
 import { useCompany } from "@/contexts/CompanyContext";
-import { Warehouse, Search, AlertTriangle, TrendingDown, ShieldAlert, RotateCcw } from "lucide-react";
+import { Warehouse, Search, AlertTriangle, TrendingDown, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 
 export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>('all');
   const { currentCompany } = useCompany();
   const { data: inventory = [], isLoading } = useInventory();
   const { data: movements = [] } = useStockMovements();
 
-  const filtered = inventory.filter(i =>
-    (i.products?.sku || '').toLowerCase().includes(search.toLowerCase()) ||
-    (i.products?.name || '').toLowerCase().includes(search.toLowerCase())
-  );
-
   const totalOnHand = inventory.reduce((s, i) => s + i.on_hand, 0);
   const totalReserved = inventory.reduce((s, i) => s + i.reserved, 0);
   const totalDamaged = inventory.reduce((s, i) => s + i.damaged, 0);
-
   const lowCount = inventory.filter(i => {
     const threshold = i.products?.reorder_point || 0;
     return i.on_hand > 0 && i.on_hand <= threshold;
   }).length;
-
   const outCount = inventory.filter(i => i.on_hand === 0).length;
 
   const getItemMovements = (productId: string) =>
     movements.filter(m => m.product_id === productId).slice(0, 10);
 
+  const filteredByTab = inventory.filter(i => {
+    if (filter === 'all') return true;
+    if (filter === 'low') return i.on_hand > 0 && i.on_hand <= (i.products?.reorder_point || 0);
+    if (filter === 'out') return i.on_hand === 0;
+    if (filter === 'damaged') return i.damaged > 0;
+    return true;
+  });
+
+  const filtered = filteredByTab.filter(i =>
+    (i.products?.sku || '').toLowerCase().includes(search.toLowerCase()) ||
+    (i.products?.name || '').toLowerCase().includes(search.toLowerCase())
+  );
+
   if (!currentCompany) return <EmptyState icon={Warehouse} title="No company selected" />;
+
+  const tabs = [
+    { key: 'all', label: `All (${inventory.length})` },
+    { key: 'low', label: `Low Stock (${lowCount})` },
+    { key: 'out', label: `Out of Stock (${outCount})` },
+    { key: 'damaged', label: `Damaged (${inventory.filter(i => i.damaged > 0).length})` },
+  ];
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -74,13 +88,36 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text" placeholder="Search SKU or product..."
-          value={search} onChange={e => setSearch(e.target.value)}
-          className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        />
+      {/* Filter row: tabs + search on same line */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {tabs.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                filter === f.key
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-card text-muted-foreground border-border hover:bg-muted'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative flex-1 min-w-0 sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text" placeholder="Search SKU or product..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+
+        <span className="text-xs text-muted-foreground sm:ml-auto whitespace-nowrap">
+          Showing {filtered.length} of {inventory.length}
+        </span>
       </div>
 
       {isLoading ? <LoadingSpinner message="Loading inventory..." /> : filtered.length === 0 ? (

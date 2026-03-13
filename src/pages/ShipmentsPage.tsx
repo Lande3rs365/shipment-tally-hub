@@ -42,6 +42,14 @@ export default function ShipmentsPage() {
 
   if (!currentCompany) return <EmptyState icon={Truck} title="No company selected" />;
 
+  const tabs = [
+    { key: 'all' as const, label: `All (${shipments.length})` },
+    { key: 'in_transit' as const, label: `In Transit (${counts.inTransit})` },
+    { key: 'delivered' as const, label: `Delivered (${counts.delivered})` },
+    { key: 'label_created' as const, label: `Label Created (${counts.labelCreated})` },
+    { key: 'exception' as const, label: `Exception (${counts.exception})` },
+  ];
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div>
@@ -57,44 +65,43 @@ export default function ShipmentsPage() {
         <KpiCard title="Exceptions" value={counts.exception} icon={AlertTriangle} variant="danger" />
       </div>
 
-      {/* Filter chips */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {([
-          { key: 'all', label: `All (${shipments.length})` },
-          { key: 'in_transit', label: `In Transit (${counts.inTransit})` },
-          { key: 'delivered', label: `Delivered (${counts.delivered})` },
-          { key: 'label_created', label: `Label Created (${counts.labelCreated})` },
-          { key: 'exception', label: `Exception (${counts.exception})` },
-        ] as const).map(f => (
-          <button
-            key={f.key}
-            onClick={() => setStatusFilter(f.key)}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
-              statusFilter === f.key
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-card text-muted-foreground border-border hover:bg-muted'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      {/* Filter row: tabs + search on same line */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {tabs.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setStatusFilter(f.key)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                statusFilter === f.key
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-card text-muted-foreground border-border hover:bg-muted'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search shipment, order, customer, carrier..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        />
+        <div className="relative flex-1 min-w-0 sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search shipment, order, customer, carrier..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+
+        <span className="text-xs text-muted-foreground sm:ml-auto whitespace-nowrap">
+          Showing {filtered.length} of {shipments.length}
+        </span>
       </div>
 
       {isLoading ? <LoadingSpinner message="Loading shipments..." /> : filtered.length === 0 ? (
         <EmptyState icon={Truck} title="No shipments" description="Shipments will appear here once orders are fulfilled." />
       ) : isMobile ? (
-        /* Mobile card view */
         <div className="space-y-2">
           {filtered.map(s => (
             <div
@@ -119,7 +126,6 @@ export default function ShipmentsPage() {
           ))}
         </div>
       ) : (
-        /* Desktop table view */
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

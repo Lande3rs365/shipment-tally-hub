@@ -10,11 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
 type SortField = "order_date" | "order_number" | "customer_name";
@@ -23,7 +19,6 @@ type SortDir = "asc" | "desc";
 export default function OrdersPage() {
   const [search, setSearch] = useState("");
   const [wooFilter, setWooFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("order_date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const navigate = useNavigate();
@@ -33,11 +28,6 @@ export default function OrdersPage() {
 
   const wooStatuses = useMemo(() => {
     const set = new Set(orders.map(o => o.woo_status).filter(Boolean));
-    return [...set].sort();
-  }, [orders]);
-
-  const statuses = useMemo(() => {
-    const set = new Set(orders.map(o => o.status).filter(Boolean));
     return [...set].sort();
   }, [orders]);
 
@@ -57,10 +47,6 @@ export default function OrdersPage() {
       result = result.filter(o => o.woo_status === wooFilter);
     }
 
-    if (statusFilter !== "all") {
-      result = result.filter(o => o.status === statusFilter);
-    }
-
     result = [...result].sort((a, b) => {
       let cmp = 0;
       if (sortField === "order_date") {
@@ -76,7 +62,7 @@ export default function OrdersPage() {
     });
 
     return result;
-  }, [orders, search, wooFilter, statusFilter, sortField, sortDir]);
+  }, [orders, search, wooFilter, sortField, sortDir]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -118,8 +104,20 @@ export default function OrdersPage() {
         <KpiCard title="Cancelled / Refunded" value={orderCounts.cancelled} icon={Package} variant="danger" />
       </div>
 
-      {/* Filters row */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-wrap">
+      {/* Filter row: status dropdown + search + showing count */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <Select value={wooFilter} onValueChange={setWooFilter}>
+          <SelectTrigger className="w-full sm:w-[180px] bg-card">
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status ({orders.length})</SelectItem>
+            {wooStatuses.map(s => (
+              <SelectItem key={s} value={s!}>{s} ({orders.filter(o => o.woo_status === s).length})</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <div className="relative flex-1 min-w-0 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -131,50 +129,23 @@ export default function OrdersPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select value={wooFilter} onValueChange={setWooFilter}>
-            <SelectTrigger className="w-[140px] sm:w-[160px] bg-card">
-              <SelectValue placeholder="Woo Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Woo Status</SelectItem>
-              {wooStatuses.map(s => (
-                <SelectItem key={s} value={s!}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {(wooFilter !== "all" || search) && (
+          <button
+            onClick={() => { setWooFilter("all"); setSearch(""); }}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline"
+          >
+            Clear filters
+          </button>
+        )}
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] sm:w-[160px] bg-card">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              {statuses.map(s => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {(wooFilter !== "all" || statusFilter !== "all" || search) && (
-            <button
-              onClick={() => { setWooFilter("all"); setStatusFilter("all"); setSearch(""); }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors underline"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-
-        <span className="text-xs text-muted-foreground sm:ml-auto">
+        <span className="text-xs text-muted-foreground sm:ml-auto whitespace-nowrap">
           Showing {filtered.length} of {orders.length}
         </span>
       </div>
 
       {isLoading ? <LoadingSpinner message="Loading orders..." /> : filtered.length === 0 ? (
-        <EmptyState icon={Package} title="No orders found" description={search || wooFilter !== "all" || statusFilter !== "all" ? "Try adjusting your filters." : "Orders will appear here once data is imported."} />
+        <EmptyState icon={Package} title="No orders found" description={search || wooFilter !== "all" ? "Try adjusting your filters." : "Orders will appear here once data is imported."} />
       ) : isMobile ? (
-        /* Mobile card view */
         <div className="space-y-2">
           {filtered.map(order => (
             <div
@@ -194,7 +165,6 @@ export default function OrdersPage() {
               )}
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <StatusBadge status={order.woo_status || 'processing'} />
-                <StatusBadge status={order.status} />
                 {order.source && (
                   <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{order.source}</span>
                 )}
@@ -203,32 +173,21 @@ export default function OrdersPage() {
           ))}
         </div>
       ) : (
-        /* Desktop table view */
         <div className="bg-card border border-border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30 text-muted-foreground text-xs uppercase tracking-wider">
-                  <th
-                    className="text-left py-3 px-4 cursor-pointer hover:text-foreground transition-colors select-none"
-                    onClick={() => toggleSort("order_number")}
-                  >
+                  <th className="text-left py-3 px-4 cursor-pointer hover:text-foreground transition-colors select-none" onClick={() => toggleSort("order_number")}>
                     <span className="flex items-center">Order <SortIcon field="order_number" /></span>
                   </th>
-                  <th
-                    className="text-left py-3 px-4 cursor-pointer hover:text-foreground transition-colors select-none"
-                    onClick={() => toggleSort("order_date")}
-                  >
+                  <th className="text-left py-3 px-4 cursor-pointer hover:text-foreground transition-colors select-none" onClick={() => toggleSort("order_date")}>
                     <span className="flex items-center">Date <SortIcon field="order_date" /></span>
                   </th>
-                  <th
-                    className="text-left py-3 px-4 cursor-pointer hover:text-foreground transition-colors select-none"
-                    onClick={() => toggleSort("customer_name")}
-                  >
+                  <th className="text-left py-3 px-4 cursor-pointer hover:text-foreground transition-colors select-none" onClick={() => toggleSort("customer_name")}>
                     <span className="flex items-center">Customer <SortIcon field="customer_name" /></span>
                   </th>
                   <th className="text-left py-3 px-4">Items</th>
-                  <th className="text-left py-3 px-4">Woo Status</th>
                   <th className="text-left py-3 px-4">Status</th>
                   <th className="text-left py-3 px-4">Source</th>
                 </tr>
@@ -252,7 +211,6 @@ export default function OrdersPage() {
                       {order.order_items?.map((i: any) => `${i.sku || '?'} ×${i.quantity}`).join(', ') || '—'}
                     </td>
                     <td className="py-3 px-4"><StatusBadge status={order.woo_status || 'processing'} /></td>
-                    <td className="py-3 px-4"><StatusBadge status={order.status} /></td>
                     <td className="py-3 px-4 text-xs text-muted-foreground">{order.source || '—'}</td>
                   </tr>
                 ))}

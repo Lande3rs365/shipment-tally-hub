@@ -180,30 +180,36 @@ export default function StockMovementsPage() {
         </form>
       )}
 
-      {/* Direction filter chips */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {(['ALL', 'IN', 'OUT', 'MOVE', 'ADJUST'] as const).map(d => (
-          <button
-            key={d}
-            onClick={() => setDirFilter(d)}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
-              dirFilter === d
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-card text-muted-foreground border-border hover:bg-muted'
-            }`}
-          >
-            {d === 'ALL' ? `All (${movements.length})` : `${d} (${counts[d]})`}
-          </button>
-        ))}
-      </div>
+      {/* Filter row: tabs + search on same line */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {(['ALL', 'IN', 'OUT', 'MOVE', 'ADJUST'] as const).map(d => (
+            <button
+              key={d}
+              onClick={() => setDirFilter(d)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                dirFilter === d
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-card text-muted-foreground border-border hover:bg-muted'
+              }`}
+            >
+              {d === 'ALL' ? `All (${movements.length})` : `${d} (${counts[d]})`}
+            </button>
+          ))}
+        </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
-          type="text" placeholder="Search SKU, product, type..."
-          value={search} onChange={e => setSearch(e.target.value)}
-          className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        />
+        <div className="relative flex-1 min-w-0 sm:max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text" placeholder="Search SKU, product, type..."
+            value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full bg-card border border-border rounded-md pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+
+        <span className="text-xs text-muted-foreground sm:ml-auto whitespace-nowrap">
+          Showing {filtered.length} of {movements.length}
+        </span>
       </div>
 
       {isLoading ? <LoadingSpinner message="Loading movements..." /> : filtered.length === 0 ? (
