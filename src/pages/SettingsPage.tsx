@@ -14,13 +14,16 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Building2, MapPin, Users, Save, Loader2, Plus, Trash2, Copy,
-  Mail, UserPlus, X, Crown, Lock,
+  Mail, UserPlus, X, Crown, Lock, Upload, FileText, Plug,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { useExtraSeats } from "@/hooks/useSupabaseData";
 import { Coffee } from "lucide-react";
 import type { StockLocation } from "@/types/database";
+import { DataIntakeContent } from "@/pages/UploadsPage";
+import { ExportsContent } from "@/pages/ExportsPage";
+import { IntegrationsContent } from "@/pages/IntegrationsPage";
 
 // ─── Company Details Tab ────────────────────────────────────────────
 function CompanyDetailsTab() {
