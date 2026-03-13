@@ -84,17 +84,18 @@ const App = () => (
                           <Route path="/orders/:orderId" element={<OrderDetailPage />} />
                           <Route path="/inventory" element={<InventoryPage />} />
                           <Route path="/shipments" element={<ShipmentsPage />} />
-                          <Route path="/uploads" element={<UploadsPage />} />
                           <Route path="/stock-movements" element={<StockMovementsPage />} />
                           <Route path="/supplier-manifests" element={<SupplierManifestsPage />} />
                           <Route path="/returns" element={<ReturnsPage />} />
                           <Route path="/exceptions" element={<ExceptionsPage />} />
                           <Route path="/products" element={<ProductsPage />} />
                           <Route path="/profile" element={<ProfilePage />} />
-                          <Route path="/exports" element={<ExportsPage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/billing" element={<BillingPage />} />
-                          <Route path="/integrations" element={<IntegrationsPage />} />
+                          {/* Redirects for old standalone routes */}
+                          <Route path="/uploads" element={<Navigate to="/settings?tab=data-intake" replace />} />
+                          <Route path="/exports" element={<Navigate to="/settings?tab=exports" replace />} />
+                          <Route path="/integrations" element={<Navigate to="/settings?tab=integrations" replace />} />
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </AppLayout>
