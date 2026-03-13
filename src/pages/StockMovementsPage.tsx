@@ -109,6 +109,14 @@ export default function StockMovementsPage() {
         </Button>
       </div>
 
+      {/* KPI row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard title="Stock In" value={counts.IN} icon={ArrowDownLeft} variant="success" />
+        <KpiCard title="Stock Out" value={counts.OUT} icon={ArrowUpRight} variant="danger" />
+        <KpiCard title="Transfers" value={counts.MOVE} icon={RefreshCw} variant="info" />
+        <KpiCard title="Adjustments" value={counts.ADJUST} icon={SlidersHorizontal} variant="warning" />
+      </div>
+
       {/* Adjustment Form */}
       {showAdjForm && (
         <form onSubmit={handleAdjustment} className="bg-card border border-border rounded-lg p-5 space-y-4">

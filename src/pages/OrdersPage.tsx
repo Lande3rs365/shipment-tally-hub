@@ -96,11 +96,26 @@ export default function OrdersPage() {
 
   if (!currentCompany) return <EmptyState icon={Package} title="No company selected" description="Create or join a company to view orders." />;
 
+  const orderCounts = useMemo(() => ({
+    processing: orders.filter(o => o.woo_status === 'processing' || o.status === 'processing').length,
+    completed: orders.filter(o => o.woo_status === 'completed' || o.status === 'completed' || o.status === 'shipped' || o.status === 'delivered').length,
+    onHold: orders.filter(o => o.woo_status === 'on-hold' || o.status === 'on-hold').length,
+    cancelled: orders.filter(o => o.woo_status === 'cancelled' || o.woo_status === 'refunded' || o.status === 'cancelled').length,
+  }), [orders]);
+
   return (
     <div className="p-4 md:p-6 space-y-4">
       <div>
         <h1 className="text-xl md:text-2xl font-bold">Master Orders</h1>
         <p className="text-sm text-muted-foreground">{orders.length} orders · Click any row for detail view</p>
+      </div>
+
+      {/* KPI row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard title="Processing" value={orderCounts.processing} icon={Clock} variant="info" />
+        <KpiCard title="Completed" value={orderCounts.completed} icon={CheckCircle} variant="success" />
+        <KpiCard title="On Hold" value={orderCounts.onHold} icon={AlertTriangle} variant="warning" />
+        <KpiCard title="Cancelled / Refunded" value={orderCounts.cancelled} icon={Package} variant="danger" />
       </div>
 
       {/* Filters row */}

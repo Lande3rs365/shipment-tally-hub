@@ -217,6 +217,14 @@ export default function SupplierManifestsPage() {
         </Button>
       </div>
 
+      {/* KPI row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard title="Pending" value={totalExpected} icon={Clock} variant="warning" />
+        <KpiCard title="Partially Received" value={totalIssues} icon={AlertTriangle} variant="danger" />
+        <KpiCard title="Received / Closed" value={totalReceived} icon={CheckCircle} variant="success" />
+        <KpiCard title="Total Manifests" value={manifests.length} icon={Ship} variant="info" />
+      </div>
+
       {/* New Manifest Form */}
       {showNewForm && (
         <form onSubmit={handleCreateManifest} className="bg-card border border-border rounded-lg p-5 space-y-4">
