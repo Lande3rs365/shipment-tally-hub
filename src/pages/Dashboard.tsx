@@ -154,6 +154,32 @@ export default function Dashboard() {
         <KpiCard title="Returns Pending" value={stats?.returnsPending || 0} icon={Package} variant="default" />
       </div>
 
+      {isEmptyData && (
+        <div className="bg-card border border-border rounded-lg p-5 space-y-3">
+          <h2 className="text-sm font-semibold flex items-center gap-2">
+            <Package className="w-4 h-4 text-primary" />
+            Getting Started
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Your dashboard is empty. Here's how to populate it with data:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button onClick={() => navigate('/uploads')} className="text-left p-3 rounded-md border border-border hover:bg-muted/30 transition-colors">
+              <p className="text-sm font-medium text-foreground">1. Upload Data</p>
+              <p className="text-xs text-muted-foreground mt-1">Import orders, shipments, or SKU frameworks via CSV/XLSX.</p>
+            </button>
+            <button onClick={() => navigate('/integrations')} className="text-left p-3 rounded-md border border-border hover:bg-muted/30 transition-colors">
+              <p className="text-sm font-medium text-foreground">2. Connect Integrations</p>
+              <p className="text-xs text-muted-foreground mt-1">Link WooCommerce or ShipStation to sync automatically.</p>
+            </button>
+            <button onClick={() => navigate('/products')} className="text-left p-3 rounded-md border border-border hover:bg-muted/30 transition-colors">
+              <p className="text-sm font-medium text-foreground">3. Manage Products</p>
+              <p className="text-xs text-muted-foreground mt-1">Set up your product catalog and SKU framework.</p>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Chart */}
         <div className="lg:col-span-2 bg-card border border-border rounded-lg p-5">
