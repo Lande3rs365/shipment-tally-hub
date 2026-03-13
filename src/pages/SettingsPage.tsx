@@ -873,51 +873,62 @@ function TeamTab() {
 // ─── AI Agent Coming Soon ───────────────────────────────────────────
 function AIAgentComingSoon() {
   const coreFeatures = [
-    { icon: MessageSquare, title: "Smart Inbox Monitoring", desc: "Monitors dedicated distribution and customer support email accounts, plus Tawk.to & Zendesk — reads, classifies, and routes every message automatically" },
-    { icon: Search, title: "Tracking Chase", desc: "Chases missing tracking numbers from distributors without manual follow-up — follows up until resolved" },
-    { icon: Bell, title: "Customer Updates", desc: "Keeps customers informed with proactive shipping status notifications across email and messaging" },
-    { icon: Clock, title: "EOD Team Briefings", desc: "Delivers end-of-day operational summaries straight to WhatsApp — orders shipped, exceptions raised, stock alerts" },
-    { icon: Zap, title: "Order Matching", desc: "Matches incoming responses to the right orders and updates records instantly — no manual intervention" },
+    { icon: Bell, title: "Auto Customer Updates", desc: "Proactive dispatch & delivery notifications — customers stop asking 'where's my order?'" },
+    { icon: Search, title: "Tracking Chase", desc: "Automatically chases missing tracking numbers from carriers and distributors until resolved" },
+    { icon: MessageSquare, title: "Inbox Monitoring", desc: "Monitors dedicated distribution & customer support emails, plus Tawk.to & Zendesk — reads, classifies, and routes automatically" },
+    { icon: Zap, title: "Order Matching", desc: "Matches incoming responses to the right orders and updates records instantly — zero manual work" },
+    { icon: Clock, title: "EOD Team Briefings", desc: "End-of-day summaries straight to WhatsApp — orders shipped, exceptions raised, stock alerts" },
     { icon: CheckCircle2, title: "Full Audit Trail", desc: "Every action logged, every message traceable — complete operational visibility" },
   ];
 
   const PHASES = [
     {
       phase: "Phase 1",
-      label: "Intelligent Comms",
+      label: "Zero Manual Order Chasing",
+      hook: "I need this today",
       status: "Building Now",
       items: [
-        { name: "Google Drive / Sheets", desc: "Agent watches folders, auto-imports new files via existing pipeline" },
-        { name: "Email Inbox Monitoring", desc: "Dedicated distribution & customer support email account monitoring" },
-        { name: "Tawk.to & Zendesk", desc: "Reads support responses, matches to orders, updates records" },
+        { name: "Shopify + WooCommerce Sync", desc: "All your sales channels feeding orders into one place — no more copy-pasting between platforms" },
+        { name: "EasyPost Unified Tracking", desc: "Live tracking webhooks for 100+ carriers — you'll never manually chase a tracking number again" },
+        { name: "Auto Customer Notifications", desc: "Dispatch & delivery emails sent automatically — kill 'where is my order?' forever" },
+        { name: "Low Stock Alerts", desc: "Get warned before you run out — not after orders start failing" },
       ],
     },
     {
       phase: "Phase 2",
-      label: "Shipping & Accounting",
+      label: "Everything in One Place",
+      hook: "This saves me a day a week",
       status: "Next Up",
       items: [
-        { name: "EasyPost", desc: "Unified tracking for 100+ carriers — live webhooks replace manual chase" },
-        { name: "Xero / QuickBooks / MYOB", desc: "Sync invoices, payments, and reconcile orders automatically" },
+        { name: "eBay + Amazon + TikTok Shop", desc: "Consolidate marketplace orders with automatic fulfilment sync" },
+        { name: "Carrier Tracking Chase", desc: "Agent follows up with carriers on missing tracking — persistent, polite, relentless" },
+        { name: "Customer Chase Automation", desc: "Auto-follow-up on unresolved queries, returns, and payment issues" },
+        { name: "WhatsApp COB Summary", desc: "Daily team briefing — what shipped, what's stuck, what needs attention tomorrow" },
       ],
     },
     {
       phase: "Phase 3",
-      label: "Sales Channels",
+      label: "The Back Office Sorts Itself",
+      hook: "I'm running a proper business now",
       status: "Planned",
       items: [
-        { name: "Shopify / Etsy", desc: "Orders flow in from additional e-commerce channels automatically" },
-        { name: "Klaviyo / Mailchimp", desc: "Trigger dispatch & delivery emails from order status changes" },
+        { name: "Xero / QuickBooks / MYOB", desc: "Invoices, payments, and reconciliation sync automatically — your numbers finally match" },
+        { name: "Klaviyo / Mailchimp", desc: "Trigger marketing flows from dispatch & delivery events" },
+        { name: "Tawk.to / Zendesk Matching", desc: "Support tickets auto-matched to orders, responses logged" },
+        { name: "Shipping@ Inbox Monitoring", desc: "Dedicated email account monitoring — distribution and support, organised and actioned" },
       ],
     },
     {
       phase: "Phase 4",
-      label: "Marketplace & Payments",
+      label: "AI Does the Thinking",
+      hook: "I'm ready to scale",
       status: "Planned",
       items: [
-        { name: "Amazon / eBay / TikTok Shop", desc: "Marketplace orders from Amazon SP-API, eBay, and TikTok Shop with automatic fulfilment sync" },
-        { name: "PayPal / Afterpay", desc: "Payment status reconciliation against orders" },
-        { name: "Slack / Telegram / Trello", desc: "Team alerts, exception cards, and channel summaries" },
+        { name: "Full AI Agent", desc: "Chasing, drafting, summarising — Claude-powered operations assistant" },
+        { name: "Google Drive Auto-Import", desc: "Drop files in a folder, agent imports via existing pipeline — no manual upload" },
+        { name: "PayPal / Afterpay Reconciliation", desc: "Payment status matched against orders automatically" },
+        { name: "Etsy + Emerging Channels", desc: "New sales channels plugged in as you grow" },
+        { name: "Slack / Telegram / Trello", desc: "Exception cards, urgent alerts, and team channel summaries" },
       ],
     },
   ];
@@ -926,6 +937,12 @@ function AIAgentComingSoon() {
     "Building Now": "bg-primary/15 text-primary border-primary/25",
     "Next Up": "bg-accent/50 text-accent-foreground border-accent/30",
     "Planned": "bg-muted text-muted-foreground border-border",
+  };
+
+  const phaseEmoji: Record<string, string> = {
+    "Building Now": "🔥",
+    "Next Up": "⚡",
+    "Planned": "🗺️",
   };
 
   return (
@@ -945,21 +962,22 @@ function AIAgentComingSoon() {
             </Badge>
           </div>
 
-          <div className="space-y-3 max-w-2xl">
+          <div className="space-y-4 max-w-2xl">
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
               FulfillMate AI Agent
             </h2>
-            <p className="text-lg text-primary font-medium">
-              Intelligent communications, automated.
+            <p className="text-base sm:text-lg text-primary font-semibold leading-snug">
+              Connects all your sales channels, automatically updates customers with tracking, and chases the ones you'd forget — so you stop living in your inbox.
             </p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              FulfillMate's built-in AI agent monitors your shipping inbox, chases missing tracking numbers, 
-              keeps customers informed, and delivers end-of-day team briefings to WhatsApp — automatically.
-            </p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              It reads responses from Tawk.to and Zendesk, matches them to the right orders, and updates 
-              your records without manual intervention. Every action is logged; every message is traceable.
-            </p>
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
+              <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 text-primary" />
+              </div>
+              <p className="text-sm text-foreground">
+                <span className="font-semibold">On average, beta users cut customer service emails by 60%</span>
+                <span className="text-muted-foreground"> in the first week.</span>
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -995,9 +1013,10 @@ function AIAgentComingSoon() {
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{phase.phase}</p>
                     <CardTitle className="text-sm font-semibold mt-0.5">{phase.label}</CardTitle>
+                    <p className="text-xs text-muted-foreground italic mt-0.5">"{phase.hook}"</p>
                   </div>
                   <Badge variant="outline" className={cn("text-[10px] font-semibold", phaseColors[phase.status])}>
-                    {phase.status}
+                    {phaseEmoji[phase.status]} {phase.status}
                   </Badge>
                 </div>
               </CardHeader>
