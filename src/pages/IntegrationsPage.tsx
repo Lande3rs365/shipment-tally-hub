@@ -19,9 +19,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Eye, EyeOff, Loader2, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Plug, Calendar, Clock,
-  Anchor, MessageCircle,
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Eye, EyeOff, Loader2, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Calendar, Clock,
+  ChevronDown, Info,
 } from "lucide-react";
+import wooLogo from "@/assets/logo-woocommerce.svg";
+import shipstationLogo from "@/assets/logo-shipstation.png";
+import tawkLogo from "@/assets/logo-tawk.png";
 import { format } from "date-fns";
 
 // ── Shared status badge helper ──
