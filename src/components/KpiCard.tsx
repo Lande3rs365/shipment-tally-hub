@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,17 +26,23 @@ const iconVariantStyles = {
   info: 'text-info',
 };
 
-export default function KpiCard({ title, value, icon: Icon, trend, variant = 'default' }: KpiCardProps) {
-  return (
-    <div className={cn("kpi-card", variantStyles[variant])}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{title}</p>
-          <p className="text-2xl font-bold font-mono text-foreground">{value}</p>
-          {trend && <p className="text-xs text-muted-foreground mt-1">{trend}</p>}
+const KpiCard = forwardRef<HTMLDivElement, KpiCardProps>(
+  ({ title, value, icon: Icon, trend, variant = 'default' }, ref) => {
+    return (
+      <div ref={ref} className={cn("kpi-card", variantStyles[variant])}>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{title}</p>
+            <p className="text-2xl font-bold font-mono text-foreground">{value}</p>
+            {trend && <p className="text-xs text-muted-foreground mt-1">{trend}</p>}
+          </div>
+          <Icon className={cn("w-5 h-5", iconVariantStyles[variant])} />
         </div>
-        <Icon className={cn("w-5 h-5", iconVariantStyles[variant])} />
       </div>
-    </div>
-  );
-}
+    );
+  }
+);
+
+KpiCard.displayName = "KpiCard";
+
+export default KpiCard;
