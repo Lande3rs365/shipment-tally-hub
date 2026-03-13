@@ -7,7 +7,7 @@ RETURNS text
 LANGUAGE sql
 AS $$
   SELECT string_agg(
-    substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (get_byte(gen_random_bytes(1), 0) % 31) + 1, 1),
+    substr('ABCDEFGHJKMNPQRSTUVWXYZ23456789', (floor(random() * 31))::int + 1, 1),
     ''
   )
   FROM generate_series(1, 12);
