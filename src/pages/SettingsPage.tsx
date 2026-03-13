@@ -874,8 +874,7 @@ function TeamTab() {
 function AIAgentComingSoon() {
   const coreFeatures = [
     { icon: Bell, title: "Auto Customer Updates", desc: "Proactive dispatch & delivery notifications — customers stop asking 'where's my order?'" },
-    { icon: Search, title: "Tracking Chase", desc: "Automatically chases missing tracking numbers from carriers and distributors until resolved" },
-    { icon: MessageSquare, title: "Inbox Monitoring", desc: "Monitors dedicated distribution & customer support emails, plus Tawk.to & Zendesk — reads, classifies, and routes automatically" },
+    { icon: Search, title: "Tracking Chase", desc: "Automatically chases missing tracking numbers from carriers and distributors — persistent, polite, relentless" },
     { icon: Zap, title: "Order Matching", desc: "Matches incoming responses to the right orders and updates records instantly — zero manual work" },
     { icon: Clock, title: "EOD Team Briefings", desc: "End-of-day summaries straight to WhatsApp — orders shipped, exceptions raised, stock alerts" },
     { icon: CheckCircle2, title: "Full Audit Trail", desc: "Every action logged, every message traceable — complete operational visibility" },
