@@ -444,12 +444,35 @@ function TeamTab() {
                       {name} {isCurrentUser && <span className="text-muted-foreground">(you)</span>}
                     </p>
                   </div>
-                  <Badge
-                    variant={m.role === "owner" ? "default" : "secondary"}
-                    className="text-[10px] capitalize"
-                  >
-                    {m.role}
-                  </Badge>
+                  {isOwner && !isCurrentUser ? (
+                    <Select
+                      value={m.role}
+                      onValueChange={(val) => handleRoleChange(m.id, m.user_id, val)}
+                      disabled={changingRole === m.id}
+                    >
+                      <SelectTrigger className="w-28 h-8 text-[11px]">
+                        {changingRole === m.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <SelectValue />
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ROLES.map((r) => (
+                          <SelectItem key={r.value} value={r.value} className="text-xs">
+                            {r.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Badge
+                      variant={m.role === "owner" ? "default" : "secondary"}
+                      className="text-[10px] capitalize"
+                    >
+                      {m.role}
+                    </Badge>
+                  )}
                 </div>
               );
             })}
