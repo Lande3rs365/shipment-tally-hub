@@ -273,20 +273,29 @@ function TeamTab() {
   const { data: members = [] } = useQuery<TeamMember[]>({
     queryKey: ["team_members", currentCompany?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Fetch members
+      const { data: uc, error: ucErr } = await supabase
         .from("user_companies")
-        .select("id, user_id, role, created_at, profile:profiles!user_companies_user_id_fkey(display_name, avatar_url)")
+        .select("id, user_id, role, created_at")
         .eq("company_id", currentCompany!.id);
-      if (error) {
-        // If the join fails, fetch without profiles
-        const { data: fallback, error: fbErr } = await supabase
-          .from("user_companies")
-          .select("id, user_id, role, created_at")
-          .eq("company_id", currentCompany!.id);
-        if (fbErr) throw fbErr;
-        return fallback || [];
-      }
-      return data || [];
+      if (ucErr) throw ucErr;
+      if (!uc || uc.length === 0) return [];
+
+      // Fetch profiles for those user_ids
+      const userIds = uc.map((m) => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .in("user_id", userIds);
+
+      const profileMap = new Map(
+        (profiles || []).map((p) => [p.user_id, p])
+      );
+
+      return uc.map((m) => ({
+        ...m,
+        profile: profileMap.get(m.user_id) || null,
+      }));
     },
     enabled: !!currentCompany?.id,
   });
