@@ -1064,7 +1064,7 @@ function AIAgentComingSoon() {
             <p className="text-xs text-muted-foreground">We'll notify you as soon as the AI Agent is ready for your account.</p>
           </div>
           <Button size="sm" className="shrink-0 gap-1.5">
-            <Bell className="w-3.5 h-3.5" /> Notify Me
+            <Sparkles className="w-3.5 h-3.5" /> Get Early Access
           </Button>
         </CardContent>
       </Card>
