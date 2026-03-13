@@ -19,9 +19,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Eye, EyeOff, Loader2, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Plug, Calendar, Clock,
-  Anchor, MessageCircle,
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Eye, EyeOff, Loader2, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Calendar, Clock,
+  ChevronDown, Info,
 } from "lucide-react";
+import wooLogo from "@/assets/logo-woocommerce.svg";
+import shipstationLogo from "@/assets/logo-shipstation.png";
+import tawkLogo from "@/assets/logo-tawk.png";
 import { format } from "date-fns";
 
 // ── Shared status badge helper ──
@@ -359,9 +365,7 @@ export function IntegrationsContent({ embedded = false }: { embedded?: boolean }
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                <Plug className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-              </div>
+              <img src={wooLogo} alt="WooCommerce" className="w-10 h-10 rounded-lg" />
               <div>
                 <CardTitle className="text-lg">WooCommerce</CardTitle>
                 <CardDescription>Import orders directly from your WooCommerce store</CardDescription>
@@ -450,17 +454,20 @@ export function IntegrationsContent({ embedded = false }: { embedded?: boolean }
           )}
 
           <Separator />
-          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <h4 className="text-sm font-medium text-amber-800 dark:text-amber-300">Optional: Direct Browser Access (CORS)</h4>
-            </div>
-            <p className="text-xs text-amber-700 dark:text-amber-400">
-              The default sync uses a secure backend proxy and works out of the box.
-              If you want to enable direct browser-to-store API calls as a fallback,
-              add this to your theme's <code className="px-1 py-0.5 bg-amber-100 dark:bg-amber-900 rounded">functions.php</code>:
-            </p>
-            <pre className="text-xs bg-amber-100 dark:bg-amber-900/50 rounded p-3 overflow-x-auto text-amber-900 dark:text-amber-200">
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group w-full">
+              <Info className="w-4 h-4 shrink-0" />
+              <span>Optional: Direct Browser Access (CORS)</span>
+              <ChevronDown className="w-4 h-4 ml-auto transition-transform group-data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  The default sync uses a secure backend proxy and works out of the box.
+                  If you want to enable direct browser-to-store API calls as a fallback,
+                  add this to your theme's <code className="px-1 py-0.5 bg-muted rounded text-foreground">functions.php</code>:
+                </p>
+                <pre className="text-xs bg-muted rounded p-3 overflow-x-auto text-foreground">
 {`add_action('init', function() {
   if (strpos($_SERVER['REQUEST_URI'], '/wp-json/wc/') !== false) {
     header('Access-Control-Allow-Origin: *');
@@ -472,8 +479,10 @@ export function IntegrationsContent({ embedded = false }: { embedded?: boolean }
     }
   }
 });`}
-            </pre>
-          </div>
+                </pre>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
 
@@ -482,9 +491,7 @@ export function IntegrationsContent({ embedded = false }: { embedded?: boolean }
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <Anchor className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </div>
+              <img src={shipstationLogo} alt="ShipStation" className="w-10 h-10 rounded-lg object-contain" />
               <div>
                 <CardTitle className="text-lg">ShipStation</CardTitle>
                 <CardDescription>Sync orders and shipments from ShipStation</CardDescription>
@@ -573,9 +580,7 @@ export function IntegrationsContent({ embedded = false }: { embedded?: boolean }
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
-              </div>
+              <img src={tawkLogo} alt="Tawk.to" className="w-10 h-10 rounded-lg object-contain" />
               <div>
                 <CardTitle className="text-lg">Tawk.to</CardTitle>
                 <CardDescription>Add a live chat widget to your app</CardDescription>
