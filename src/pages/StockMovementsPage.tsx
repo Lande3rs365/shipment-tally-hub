@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import KpiCard from "@/components/KpiCard";
 import {
   ArrowDownLeft, ArrowUpRight, RefreshCw, SlidersHorizontal,
   Search, ArrowRightLeft, Plus, PackagePlus, PackageMinus
