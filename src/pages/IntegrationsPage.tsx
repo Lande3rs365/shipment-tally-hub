@@ -345,12 +345,14 @@ export function IntegrationsContent({ embedded = false }: { embedded?: boolean }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Integrations</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Connect external platforms to automatically sync data.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Integrations</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Connect external platforms to automatically sync data.
+          </p>
+        </div>
+      )}
 
       {/* ── WooCommerce ── */}
       <Card>

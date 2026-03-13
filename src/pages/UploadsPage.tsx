@@ -216,11 +216,13 @@ export function DataIntakeContent({ embedded = false }: { embedded?: boolean }) 
   const sourceInfo = SOURCE_INFO[selectedSource];
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Data Intake</h1>
-        <p className="text-sm text-muted-foreground">Upload order, shipment, and master hub files (.csv or .xlsx)</p>
-      </div>
+    <div className={cn(embedded ? "space-y-6" : "p-6 space-y-6")}>
+      {!embedded && (
+        <div>
+          <h1 className="text-2xl font-bold">Data Intake</h1>
+          <p className="text-sm text-muted-foreground">Upload order, shipment, and master hub files (.csv or .xlsx)</p>
+        </div>
+      )}
 
       {/* Source selector */}
       <div className="flex gap-2 flex-wrap">
