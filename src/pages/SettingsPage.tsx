@@ -254,6 +254,7 @@ interface Invitation {
 const ROLES = [
   { value: "member", label: "Member" },
   { value: "admin", label: "Admin" },
+  { value: "owner", label: "Owner" },
 ];
 
 const FREE_MEMBER_LIMIT = 3;
