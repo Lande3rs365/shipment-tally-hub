@@ -153,6 +153,15 @@ function CompanyDetailsTab() {
 }
 
 // ─── Stock Locations Tab ────────────────────────────────────────────
+const LOCATION_TYPES = [
+  { value: "warehouse", label: "Warehouse" },
+  { value: "head_office", label: "Head Office" },
+  { value: "manufacturer", label: "Manufacturer" },
+  { value: "dealership", label: "Dealership" },
+  { value: "3rd_party", label: "3rd Party" },
+  { value: "other", label: "Other" },
+];
+
 function LocationsTab() {
   const { currentCompany } = useCompany();
   const { data: locations = [], isLoading } = useStockLocations();
@@ -161,7 +170,14 @@ function LocationsTab() {
   const [newName, setNewName] = useState("");
   const [newCode, setNewCode] = useState("");
   const [newType, setNewType] = useState("warehouse");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newAddress, setNewAddress] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFields, setEditFields] = useState<Record<string, any>>({});
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const handleAdd = async () => {
     if (!currentCompany || !newName.trim() || !newCode.trim()) return;
@@ -171,6 +187,9 @@ function LocationsTab() {
       name: newName.trim(),
       code: newCode.trim().toUpperCase(),
       location_type: newType,
+      email: newEmail.trim() || null,
+      phone: newPhone.trim() || null,
+      address: newAddress.trim() || null,
     });
     setAdding(false);
     if (error) {
@@ -178,117 +197,223 @@ function LocationsTab() {
       toast({ title: "Error", description: "Failed to add location. Please try again.", variant: "destructive" });
     } else {
       toast({ title: "Location added" });
-      setNewName("");
-      setNewCode("");
-      setNewType("warehouse");
+      setNewName(""); setNewCode(""); setNewType("warehouse");
+      setNewEmail(""); setNewPhone(""); setNewAddress("");
       queryClient.invalidateQueries({ queryKey: ["stock_locations"] });
     }
   };
 
-  const handleDeactivate = async (loc: StockLocation) => {
+  const startEdit = async (loc: StockLocation) => {
+    // Fetch full details including new fields
+    const { data } = await supabase
+      .from("stock_locations")
+      .select("name, code, location_type, email, phone, address")
+      .eq("id", loc.id)
+      .single();
+    setEditFields(data || { name: loc.name, code: loc.code, location_type: loc.location_type });
+    setEditingId(loc.id);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingId) return;
+    setSavingEdit(true);
     const { error } = await supabase
       .from("stock_locations")
-      .update({ is_active: false })
-      .eq("id", loc.id);
+      .update({
+        name: editFields.name?.trim(),
+        code: editFields.code?.trim().toUpperCase(),
+        location_type: editFields.location_type,
+        email: editFields.email?.trim() || null,
+        phone: editFields.phone?.trim() || null,
+        address: editFields.address?.trim() || null,
+      })
+      .eq("id", editingId);
+    setSavingEdit(false);
     if (error) {
-      console.error("[settings:location-deactivate]", error);
-      toast({ title: "Error", description: "Failed to deactivate location. Please try again.", variant: "destructive" });
+      console.error("[settings:location-edit]", error);
+      toast({ title: "Error", description: "Failed to update location.", variant: "destructive" });
     } else {
-      toast({ title: "Location deactivated" });
+      toast({ title: "Location updated" });
+      setEditingId(null);
       queryClient.invalidateQueries({ queryKey: ["stock_locations"] });
     }
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase
+      .from("stock_locations")
+      .delete()
+      .eq("id", id);
+    if (error) {
+      // If referenced, fall back to deactivate
+      const { error: deactivateErr } = await supabase
+        .from("stock_locations")
+        .update({ is_active: false })
+        .eq("id", id);
+      if (deactivateErr) {
+        toast({ title: "Error", description: "Failed to remove location.", variant: "destructive" });
+      } else {
+        toast({ title: "Location deactivated", description: "Location is in use and was deactivated instead of deleted." });
+      }
+    } else {
+      toast({ title: "Location removed" });
+    }
+    setDeleteConfirm(null);
+    queryClient.invalidateQueries({ queryKey: ["stock_locations"] });
   };
 
   return (
-    <Card className="border-border bg-card">
-      <CardHeader>
-        <CardTitle className="text-lg flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-primary" /> Stock Locations
-        </CardTitle>
-        <CardDescription>Manage where your inventory is stored.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Existing locations */}
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : locations.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">No active locations.</p>
-        ) : (
-          <div className="space-y-2">
-            {locations.map((loc) => (
-              <div
-                key={loc.id}
-                className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-muted/30"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{loc.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs font-mono text-muted-foreground">{loc.code}</span>
-                    <Badge variant="secondary" className="text-[10px]">{loc.location_type}</Badge>
-                  </div>
+    <>
+      <Card className="border-border bg-card">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-primary" /> Stock Locations
+          </CardTitle>
+          <CardDescription>Manage where your inventory is stored.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Existing locations */}
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : locations.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No active locations.</p>
+          ) : (
+            <div className="space-y-2">
+              {locations.map((loc) => (
+                <div key={loc.id}>
+                  {editingId === loc.id ? (
+                    <div className="p-4 rounded-lg border border-primary/30 bg-muted/30 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Name</Label>
+                          <Input value={editFields.name || ""} onChange={(e) => setEditFields({ ...editFields, name: e.target.value })} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Code</Label>
+                          <Input value={editFields.code || ""} onChange={(e) => setEditFields({ ...editFields, code: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "") })} maxLength={15} className="font-mono" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Type</Label>
+                          <Select value={editFields.location_type || "warehouse"} onValueChange={(v) => setEditFields({ ...editFields, location_type: v })}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {LOCATION_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Email</Label>
+                          <Input type="email" value={editFields.email || ""} onChange={(e) => setEditFields({ ...editFields, email: e.target.value })} placeholder="location@company.com" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Phone</Label>
+                          <Input type="tel" value={editFields.phone || ""} onChange={(e) => setEditFields({ ...editFields, phone: e.target.value })} placeholder="+61 400 000 000" />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Address</Label>
+                        <Textarea value={editFields.address || ""} onChange={(e) => setEditFields({ ...editFields, address: e.target.value })} placeholder="Street, city, state, postcode" rows={2} />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
+                          {savingEdit ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Save className="w-3 h-3 mr-1" />}
+                          Save
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => startEdit(loc)}>
+                        <p className="text-sm font-medium text-foreground">{loc.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs font-mono text-muted-foreground">{loc.code}</span>
+                          <Badge variant="secondary" className="text-[10px]">{loc.location_type}</Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => startEdit(loc)} title="Edit location">
+                          <Save className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDeleteConfirm({ id: loc.id, name: loc.name })} title="Remove location">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDeactivate(loc)}
-                  title="Deactivate location"
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {/* Add new location */}
-        <div className="border-t border-border pt-4 space-y-3">
-          <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add Location
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Name</Label>
-              <Input
-                placeholder="e.g. Returns Bay"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-              />
+          {/* Add new location */}
+          <div className="border-t border-border pt-4 space-y-3">
+            <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Add Location
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Name</Label>
+                <Input placeholder="e.g. Main Warehouse" value={newName} onChange={(e) => setNewName(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Code</Label>
+                <Input placeholder="e.g. WH-01" value={newCode} onChange={(e) => setNewCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))} maxLength={15} className="font-mono" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Type</Label>
+                <Select value={newType} onValueChange={setNewType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {LOCATION_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Email</Label>
+                <Input type="email" placeholder="location@company.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Phone</Label>
+                <Input type="tel" placeholder="+61 400 000 000" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+              </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Code</Label>
-              <Input
-                placeholder="e.g. RET-01"
-                value={newCode}
-                onChange={(e) => setNewCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ""))}
-                maxLength={15}
-                className="font-mono"
-              />
+              <Label className="text-xs">Address</Label>
+              <Textarea placeholder="Street, city, state, postcode" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} rows={2} />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Type</Label>
-              <Select value={newType} onValueChange={setNewType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="warehouse">Warehouse</SelectItem>
-                  <SelectItem value="quarantine">Quarantine</SelectItem>
-                  <SelectItem value="returns">Returns</SelectItem>
-                  <SelectItem value="staging">Staging</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Button onClick={handleAdd} disabled={adding || !newName.trim() || !newCode.trim()} size="sm">
+              {adding ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+              Add Location
+            </Button>
           </div>
-          <Button onClick={handleAdd} disabled={adding || !newName.trim() || !newCode.trim()} size="sm">
-            {adding ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
-            Add Location
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Location?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{deleteConfirm?.name}</strong>? If the location has inventory records it will be deactivated instead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteConfirm && handleDelete(deleteConfirm.id)}>
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

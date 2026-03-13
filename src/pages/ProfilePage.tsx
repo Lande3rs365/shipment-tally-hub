@@ -5,14 +5,17 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, LogOut, Save, Loader2 } from "lucide-react";
+import { LogOut, Save, Loader2 } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
   const [displayName, setDisplayName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -22,12 +25,14 @@ export default function ProfilePage() {
       try {
         const { data } = await supabase
           .from("profiles")
-          .select("display_name, job_title")
+          .select("display_name, job_title, address, phone")
           .eq("user_id", user.id)
           .single();
         if (data) {
           setDisplayName(data.display_name || "");
           setJobTitle(data.job_title || "");
+          setAddress(data.address || "");
+          setPhone(data.phone || "");
         }
       } catch {
         // profile load failure is non-fatal; user can still edit fields
@@ -46,6 +51,8 @@ export default function ProfilePage() {
       .update({
         display_name: displayName.trim() || user.email,
         job_title: jobTitle.trim() || null,
+        address: address.trim() || null,
+        phone: phone.trim() || null,
       })
       .eq("user_id", user.id);
     setSaving(false);
@@ -107,6 +114,35 @@ export default function ProfilePage() {
               value={jobTitle}
               onChange={(e) => setJobTitle(e.target.value)}
               placeholder="e.g. Operations Manager"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              value={user?.email || ""}
+              disabled
+              className="opacity-60"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone number</Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. +61 400 000 000"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="address">Address</Label>
+            <Textarea
+              id="address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Street address, city, state, postcode"
+              rows={3}
             />
           </div>
           <Button onClick={handleSave} disabled={saving} className="w-full">
