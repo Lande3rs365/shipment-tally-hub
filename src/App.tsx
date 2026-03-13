@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CompanyProvider } from "@/contexts/CompanyContext";
@@ -14,9 +14,7 @@ import OrdersPage from "@/pages/OrdersPage";
 import OrderDetailPage from "@/pages/OrderDetailPage";
 import InventoryPage from "@/pages/InventoryPage";
 import ShipmentsPage from "@/pages/ShipmentsPage";
-import UploadsPage from "@/pages/UploadsPage";
 import ExceptionsPage from "@/pages/ExceptionsPage";
-import ExportsPage from "@/pages/ExportsPage";
 import StockMovementsPage from "@/pages/StockMovementsPage";
 import SupplierManifestsPage from "@/pages/SupplierManifestsPage";
 import ReturnsPage from "@/pages/ReturnsPage";
@@ -30,7 +28,6 @@ import ProductsPage from "@/pages/ProductsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
 import BillingPage from "@/pages/BillingPage";
-import IntegrationsPage from "@/pages/IntegrationsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
