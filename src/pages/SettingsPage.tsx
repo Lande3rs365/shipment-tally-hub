@@ -903,6 +903,13 @@ export default function SettingsPage() {
           <TabsTrigger value="exports" className="gap-1.5">
             <FileText className="w-3.5 h-3.5" /> Exports
           </TabsTrigger>
+          <TabsTrigger value="ai-agent" className="gap-1.5 relative">
+            <Bot className="w-3.5 h-3.5" /> AI Agent
+            <span className="absolute -top-1 -right-1 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+            </span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="company">
@@ -922,6 +929,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="exports">
           <ExportsContent embedded />
+        </TabsContent>
+        <TabsContent value="ai-agent">
+          <AIAgentComingSoon />
         </TabsContent>
       </Tabs>
     </div>
