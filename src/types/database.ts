@@ -63,6 +63,8 @@ export interface Order {
   zendesk_ticket_id: string | null;
   last_customer_contact_at: string | null;
   customer_chase_count: number;
+  sales_channel_id: string | null;
+  external_order_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -92,6 +94,8 @@ export interface Shipment {
   region: string | null;
   tracking_chase_sent_at: string | null;
   tracking_chase_count: number;
+  easypost_tracker_id: string | null;
+  easypost_shipment_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -273,7 +277,12 @@ export type CommsThreadStatus = 'open' | 'awaiting_reply' | 'resolved' | 'closed
 export type CommsParticipantType = 'customer' | 'carrier' | 'supplier' | 'team';
 export type CommsDirection = 'inbound' | 'outbound';
 export type CommsSenderType = 'customer' | 'carrier' | 'supplier' | 'agent_ai' | 'team' | 'system';
-export type IncomingWebhookSource = 'shipping_email' | 'tawk' | 'zendesk' | 'carrier' | 'other';
+export type IncomingWebhookSource =
+  | 'shipping_email' | 'tawk' | 'zendesk' | 'carrier'
+  | 'easypost' | 'shopify' | 'amazon' | 'etsy'
+  | 'paypal' | 'stripe' | 'afterpay' | 'klarna'
+  | 'klaviyo' | 'mailchimp' | 'xero' | 'google_drive'
+  | 'other';
 export type AgentActionType =
   | 'tracking_chase'
   | 'tracking_extract'
@@ -283,7 +292,17 @@ export type AgentActionType =
   | 'whatsapp_cob_summary'
   | 'whatsapp_urgent'
   | 'record_update'
-  | 'exception_flag';
+  | 'exception_flag'
+  | 'easypost_sync'
+  | 'xero_invoice_sync'
+  | 'payment_reconcile'
+  | 'channel_order_import'
+  | 'klaviyo_send'
+  | 'mailchimp_send'
+  | 'drive_file_import'
+  | 'trello_card_create'
+  | 'slack_notify'
+  | 'telegram_notify';
 export type AgentActionStatus = 'pending' | 'completed' | 'failed' | 'skipped';
 export type AgentTriggerSource = 'cron' | 'webhook' | 'manual';
 
@@ -359,4 +378,168 @@ export interface AgentActionWithRelations extends AgentAction {
   orders: Pick<Order, 'order_number' | 'customer_name'> | null;
   shipments: Pick<Shipment, 'shipment_number' | 'tracking_number'> | null;
   comms_threads: Pick<CommsThread, 'channel' | 'subject' | 'status'> | null;
+}
+
+// ============================================================
+// Integration Ecosystem
+// ============================================================
+
+export type IntegrationType =
+  | 'easypost' | 'shippo' | 'australia_post'
+  | 'shopify' | 'amazon' | 'etsy' | 'woocommerce'
+  | 'xero' | 'quickbooks' | 'myob'
+  | 'paypal' | 'stripe' | 'afterpay' | 'klarna' | 'square'
+  | 'klaviyo' | 'mailchimp'
+  | 'tawk' | 'zendesk' | 'freshdesk' | 'intercom'
+  | 'slack' | 'trello' | 'telegram' | 'google_drive'
+  | 'google_workspace' | 'microsoft_365' | 'sendgrid' | 'postmark';
+
+export type SalesChannelType = 'shopify' | 'amazon' | 'etsy' | 'woocommerce' | 'manual' | 'other';
+
+export type CarrierTrackingStatus =
+  | 'pre_transit' | 'in_transit' | 'out_for_delivery' | 'delivered'
+  | 'available_for_pickup' | 'return_to_sender' | 'failure' | 'cancelled' | 'unknown';
+
+export type CarrierTrackingSource = 'easypost' | 'shippo' | 'australia_post' | 'carrier_webhook' | 'manual';
+
+export type PaymentProvider = 'paypal' | 'stripe' | 'afterpay' | 'klarna' | 'square' | 'manual';
+export type PaymentStatus =
+  | 'pending' | 'authorised' | 'completed' | 'partially_refunded'
+  | 'refunded' | 'failed' | 'disputed' | 'cancelled';
+
+export type AccountingProvider = 'xero' | 'quickbooks' | 'myob';
+export type AccountingSyncType = 'invoice_create' | 'invoice_update' | 'payment_record' | 'contact_sync' | 'credit_note';
+export type AccountingSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped';
+
+export type MarketingPlatform = 'klaviyo' | 'mailchimp';
+export type MarketingEventType =
+  | 'order_confirmation' | 'dispatch_notification' | 'delivery_confirmation'
+  | 'customer_chase' | 'return_confirmation' | 'marketing_campaign' | 'other';
+
+export type GoogleDriveSyncStatus = 'pending' | 'processing' | 'imported' | 'skipped' | 'failed';
+
+export interface IntegrationConfig {
+  id: string;
+  company_id: string;
+  integration_type: IntegrationType;
+  display_name: string | null;
+  is_active: boolean;
+  config: Record<string, unknown>;
+  last_sync_at: string | null;
+  last_sync_status: 'success' | 'failed' | 'partial' | null;
+  last_sync_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SalesChannel {
+  id: string;
+  company_id: string;
+  integration_config_id: string | null;
+  channel_type: SalesChannelType;
+  name: string;
+  external_store_id: string | null;
+  store_url: string | null;
+  currency: string;
+  is_active: boolean;
+  last_order_sync_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CarrierTrackingEvent {
+  id: string;
+  company_id: string;
+  shipment_id: string;
+  source: CarrierTrackingSource;
+  external_tracker_id: string | null;
+  external_event_id: string | null;
+  status: CarrierTrackingStatus;
+  status_detail: string | null;
+  description: string | null;
+  location: Record<string, unknown> | null;
+  event_timestamp: string;
+  created_at: string;
+}
+
+export interface PaymentTransaction {
+  id: string;
+  company_id: string;
+  order_id: string | null;
+  provider: PaymentProvider;
+  external_transaction_id: string | null;
+  external_payment_id: string | null;
+  external_invoice_id: string | null;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  payment_method: string | null;
+  payment_date: string | null;
+  refund_amount: number | null;
+  refund_date: string | null;
+  raw_payload: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AccountingSyncLog {
+  id: string;
+  company_id: string;
+  order_id: string | null;
+  provider: AccountingProvider;
+  external_invoice_id: string | null;
+  external_contact_id: string | null;
+  external_payment_id: string | null;
+  sync_type: AccountingSyncType;
+  status: AccountingSyncStatus;
+  synced_at: string | null;
+  error_message: string | null;
+  created_at: string;
+}
+
+export interface MarketingEvent {
+  id: string;
+  company_id: string;
+  order_id: string | null;
+  platform: MarketingPlatform;
+  event_type: MarketingEventType;
+  external_message_id: string | null;
+  external_profile_id: string | null;
+  recipient_email: string | null;
+  subject: string | null;
+  sent_at: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  bounced_at: string | null;
+  unsubscribed_at: string | null;
+  created_at: string;
+}
+
+export interface GoogleDriveSync {
+  id: string;
+  company_id: string;
+  integration_config_id: string | null;
+  folder_id: string;
+  file_id: string;
+  file_name: string;
+  mime_type: string | null;
+  drive_modified_at: string | null;
+  status: GoogleDriveSyncStatus;
+  processed_at: string | null;
+  intake_log_id: string | null;
+  error_message: string | null;
+  created_at: string;
+}
+
+// Join types
+export interface OrderWithChannel extends Order {
+  sales_channels: Pick<SalesChannel, 'name' | 'channel_type'> | null;
+}
+
+export interface ShipmentWithTracking extends Shipment {
+  carrier_tracking_events: CarrierTrackingEvent[];
+}
+
+export interface PaymentTransactionWithOrder extends PaymentTransaction {
+  orders: Pick<Order, 'order_number' | 'customer_name' | 'total_amount'> | null;
 }
