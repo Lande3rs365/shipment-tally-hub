@@ -8,6 +8,9 @@ DECLARE
   s1 uuid; s4 uuid;
   m1 uuid; m2 uuid;
 BEGIN
+  -- Skip if the demo company doesn't exist (fresh database)
+  IF NOT EXISTS (SELECT 1 FROM public.companies WHERE id = cid) THEN RETURN; END IF;
+
   SELECT id INTO p1 FROM products WHERE sku='JF-ROSE-001' AND company_id=cid LIMIT 1;
   SELECT id INTO p2 FROM products WHERE sku='JF-SILV-002' AND company_id=cid LIMIT 1;
   SELECT id INTO p3 FROM products WHERE sku='JF-PEARL-003' AND company_id=cid LIMIT 1;
