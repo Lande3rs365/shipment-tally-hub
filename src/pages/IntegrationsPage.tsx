@@ -454,17 +454,20 @@ export function IntegrationsContent({ embedded = false }: { embedded?: boolean }
           )}
 
           <Separator />
-          <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <h4 className="text-sm font-medium text-amber-800 dark:text-amber-300">Optional: Direct Browser Access (CORS)</h4>
-            </div>
-            <p className="text-xs text-amber-700 dark:text-amber-400">
-              The default sync uses a secure backend proxy and works out of the box.
-              If you want to enable direct browser-to-store API calls as a fallback,
-              add this to your theme's <code className="px-1 py-0.5 bg-amber-100 dark:bg-amber-900 rounded">functions.php</code>:
-            </p>
-            <pre className="text-xs bg-amber-100 dark:bg-amber-900/50 rounded p-3 overflow-x-auto text-amber-900 dark:text-amber-200">
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors group w-full">
+              <Info className="w-4 h-4 shrink-0" />
+              <span>Optional: Direct Browser Access (CORS)</span>
+              <ChevronDown className="w-4 h-4 ml-auto transition-transform group-data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  The default sync uses a secure backend proxy and works out of the box.
+                  If you want to enable direct browser-to-store API calls as a fallback,
+                  add this to your theme's <code className="px-1 py-0.5 bg-muted rounded text-foreground">functions.php</code>:
+                </p>
+                <pre className="text-xs bg-muted rounded p-3 overflow-x-auto text-foreground">
 {`add_action('init', function() {
   if (strpos($_SERVER['REQUEST_URI'], '/wp-json/wc/') !== false) {
     header('Access-Control-Allow-Origin: *');
@@ -476,8 +479,10 @@ export function IntegrationsContent({ embedded = false }: { embedded?: boolean }
     }
   }
 });`}
-            </pre>
-          </div>
+                </pre>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
 
