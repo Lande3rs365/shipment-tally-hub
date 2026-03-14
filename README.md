@@ -1,5 +1,4 @@
-🚧 Early Development — Private Project  
-Internal project — not yet public.
+🚧 Early Development — Private & Internal project — not yet public.
 
 #FulfillMate
 
