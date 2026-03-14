@@ -45,16 +45,35 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
     job_title: null,
   });
 
-  // Smart ping dot: animate 5 pulses → static → reset per phase
+  // Smart ping dot: animate → static → reset per phase
   const [agentDotState, setAgentDotState] = useState<'animate' | 'static'>(() => {
     try {
       const stored = JSON.parse(localStorage.getItem('ai-agent-visits') || '{}');
       if (stored.phase !== CURRENT_AGENT_PHASE) return 'animate';
       if (stored.visited) return 'static';
+      if ((stored.exposures || 0) >= 5) return 'static';
       return 'animate';
     } catch { return 'animate'; }
   });
 
+  // Track exposures (any page load counts) & handle phase resets
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('ai-agent-visits') || '{}');
+      // New phase → reset everything
+      if (stored.phase !== CURRENT_AGENT_PHASE) {
+        localStorage.setItem('ai-agent-visits', JSON.stringify({ phase: CURRENT_AGENT_PHASE, exposures: 1, visited: false }));
+        setAgentDotState('animate');
+        return;
+      }
+      if (stored.visited) return; // already visited, stay static
+      const exposures = Math.min((stored.exposures || 0) + 1, 6);
+      localStorage.setItem('ai-agent-visits', JSON.stringify({ ...stored, exposures }));
+      if (exposures >= 5) setAgentDotState('static');
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mark visited when navigating to /ai-agent
   useEffect(() => {
     if (location.pathname === '/ai-agent') {
       try {
@@ -64,16 +83,6 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
       } catch {}
     }
   }, [location.pathname]);
-
-  // On new phase, reset localStorage
-  useEffect(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('ai-agent-visits') || '{}');
-      if (stored.phase !== CURRENT_AGENT_PHASE) {
-        localStorage.setItem('ai-agent-visits', JSON.stringify({ phase: CURRENT_AGENT_PHASE, visited: false }));
-      }
-    } catch {}
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -192,7 +201,7 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
               {ping && (
                 <span className={cn("flex h-2 w-2", collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}>
                   {agentDotState === 'animate' && (
-                    <span className="animate-ping-5 absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                   )}
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                 </span>
