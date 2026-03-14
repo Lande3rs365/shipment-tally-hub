@@ -2,7 +2,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Package, Truck, Warehouse,
   AlertTriangle, ChevronLeft, ChevronRight,
-  ArrowRightLeft, Ship, RotateCcw, LogOut, Building2, ChevronsUpDown, Tag, User, Settings
+  ArrowRightLeft, Ship, RotateCcw, LogOut, Building2, ChevronsUpDown, Tag, User, Settings, Bot
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -16,14 +16,18 @@ import {
 
 export const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/exceptions", icon: AlertTriangle, label: "Exceptions" },
   { to: "/orders", icon: Package, label: "Orders" },
+  { to: "/exceptions", icon: AlertTriangle, label: "Exceptions" },
   { to: "/shipments", icon: Truck, label: "Shipments" },
   { to: "/returns", icon: RotateCcw, label: "Returns" },
   { to: "/supplier-manifests", icon: Ship, label: "Manufacturer Inbound" },
   { to: "/products", icon: Tag, label: "Products" },
   { to: "/inventory", icon: Warehouse, label: "Inventory" },
   { to: "/stock-movements", icon: ArrowRightLeft, label: "Stock Ledger" },
+];
+
+export const bottomNavItems = [
+  { to: "/ai-agent", icon: Bot, label: "AI Agent", ping: true },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
@@ -129,6 +133,36 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
             >
               <Icon className="w-4 h-4 shrink-0" />
               {!collapsed && <span>{label}</span>}
+            </NavLink>
+          );
+        })}
+
+        {/* Separator */}
+        <div className="my-2 mx-3 border-t border-sidebar-border" />
+
+        {/* Bottom nav items (AI Agent, Settings) */}
+        {bottomNavItems.map(({ to, icon: Icon, label, ping }) => {
+          const isActive = location.pathname === to;
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors relative",
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-primary"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {!collapsed && <span>{label}</span>}
+              {ping && (
+                <span className={cn("flex h-2 w-2", collapsed ? "absolute top-1.5 right-1.5" : "ml-auto")}>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                </span>
+              )}
             </NavLink>
           );
         })}
