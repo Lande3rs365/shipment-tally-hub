@@ -45,6 +45,43 @@ export function SidebarContent({ collapsed = false, onNavigate }: { collapsed?: 
     job_title: null,
   });
 
+  // Smart ping dot: animate → static → reset per phase
+  const [agentDotState, setAgentDotState] = useState<'animate' | 'static'>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('ai-agent-visits') || '{}');
+      if (stored.phase !== CURRENT_AGENT_PHASE) return 'animate';
+      if (stored.visited) return 'static';
+      if ((stored.exposures || 0) >= 5) return 'static';
+      return 'animate';
+    } catch { return 'animate'; }
+  });
+
+  const exposureTracked = useRef(false);
+  useEffect(() => {
+    if (exposureTracked.current) return;
+    exposureTracked.current = true;
+    try {
+      const stored = JSON.parse(localStorage.getItem('ai-agent-visits') || '{}');
+      if (stored.phase !== CURRENT_AGENT_PHASE) {
+        localStorage.setItem('ai-agent-visits', JSON.stringify({ phase: CURRENT_AGENT_PHASE, exposures: 1, visited: false }));
+        return;
+      }
+      const exposures = Math.min((stored.exposures || 0) + 1, 5);
+      localStorage.setItem('ai-agent-visits', JSON.stringify({ ...stored, exposures }));
+      if (exposures >= 5 && !stored.visited) setAgentDotState('static');
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname === '/ai-agent') {
+      try {
+        const stored = JSON.parse(localStorage.getItem('ai-agent-visits') || '{}');
+        localStorage.setItem('ai-agent-visits', JSON.stringify({ ...stored, phase: CURRENT_AGENT_PHASE, visited: true }));
+        setAgentDotState('static');
+      } catch {}
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     if (!user) return;
     const fetchProfile = async () => {
