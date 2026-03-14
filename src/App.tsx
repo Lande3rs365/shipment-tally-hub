@@ -92,6 +92,7 @@ const App = () => (
                           <Route path="/products" element={<ProductsPage />} />
                           <Route path="/profile" element={<ProfilePage />} />
                           <Route path="/settings" element={<SettingsPage />} />
+                          <Route path="/ai-agent" element={<AIAgentPage />} />
                           <Route path="/billing" element={<BillingPage />} />
                           {/* Redirects for old standalone routes */}
                           <Route path="/uploads" element={<Navigate to="/settings?tab=data-intake" replace />} />
