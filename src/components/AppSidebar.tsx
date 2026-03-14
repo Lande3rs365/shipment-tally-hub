@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const CURRENT_AGENT_PHASE = "phase-1"; // bump when a new roadmap phase ships
+const CURRENT_AGENT_PHASE = "phase-2"; // TEST: temporarily bumped to test reset
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompany } from "@/contexts/CompanyContext";
