@@ -144,19 +144,32 @@ export default function AIAgentPage() {
         </div>
       </div>
 
-      {/* How it connects — visual flow */}
-      <div className="flex items-center justify-center gap-3 sm:gap-5 py-2">
+      {/* How it connects — visual pipeline */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch">
         {[
-          { label: "Your Channels", sub: "Shopify · WooCommerce · eBay · Amazon" },
-          { label: "FulfillMate AI Agent", sub: "Reads · Matches · Chases · Logs" },
-          { label: "Customers + Team + Records", sub: "Updated automatically" },
+          { icon: MessageSquare, label: "Your Channels", sub: "Shopify · WooCommerce · eBay · Amazon", color: "text-blue-400" },
+          { icon: Bot, label: "FulfillMate AI Agent", sub: "Reads · Matches · Chases · Logs", color: "text-primary" },
+          { icon: CheckCircle2, label: "Customers + Team + Records", sub: "Updated automatically", color: "text-emerald-400" },
         ].map((step, i) => (
-          <div key={step.label} className="flex items-center gap-3 sm:gap-5">
-            <div className="text-center">
-              <p className="text-xs sm:text-sm font-semibold text-foreground">{step.label}</p>
-              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{step.sub}</p>
-            </div>
-            {i < 2 && <ArrowRight className="w-4 h-4 text-primary shrink-0" />}
+          <div key={step.label} className="flex items-center gap-3">
+            <Card className={cn(
+              "flex-1 border-border/50 bg-card/50",
+              i === 1 && "border-primary/25 bg-primary/[0.03]"
+            )}>
+              <CardContent className="flex items-center gap-3 p-4">
+                <div className={cn(
+                  "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
+                  i === 1 ? "bg-primary/15" : "bg-muted"
+                )}>
+                  <step.icon className={cn("w-4.5 h-4.5", step.color)} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{step.label}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">{step.sub}</p>
+                </div>
+              </CardContent>
+            </Card>
+            {i < 2 && <ArrowRight className="w-5 h-5 text-primary shrink-0 hidden sm:block" />}
           </div>
         ))}
       </div>
