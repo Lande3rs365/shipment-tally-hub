@@ -27,6 +27,7 @@ import AcceptInvitePage from "@/pages/AcceptInvitePage";
 import ProductsPage from "@/pages/ProductsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
+import AIAgentPage from "@/pages/AIAgentPage";
 import BillingPage from "@/pages/BillingPage";
 import NotFound from "./pages/NotFound";
 
