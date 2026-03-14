@@ -16,14 +16,18 @@ import {
 
 export const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/exceptions", icon: AlertTriangle, label: "Exceptions" },
   { to: "/orders", icon: Package, label: "Orders" },
+  { to: "/exceptions", icon: AlertTriangle, label: "Exceptions" },
   { to: "/shipments", icon: Truck, label: "Shipments" },
   { to: "/returns", icon: RotateCcw, label: "Returns" },
   { to: "/supplier-manifests", icon: Ship, label: "Manufacturer Inbound" },
   { to: "/products", icon: Tag, label: "Products" },
   { to: "/inventory", icon: Warehouse, label: "Inventory" },
   { to: "/stock-movements", icon: ArrowRightLeft, label: "Stock Ledger" },
+];
+
+export const bottomNavItems = [
+  { to: "/ai-agent", icon: Bot, label: "AI Agent", ping: true },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
